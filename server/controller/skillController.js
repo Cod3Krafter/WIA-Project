@@ -1,9 +1,13 @@
 import { connectDB } from "../config/db.js"
+import { createSkillSchema } from "../schemas/skillInputValidation.js";
 
 export async function createSkill(req, res) {
   try {
     const { skill_name, description } = req.body;
     const user_id = req.user.id; // Comes from your authenticateToken middleware
+
+    // ✅ Validate input
+    await createSkillSchema.validate(req.body, { abortEarly: false });
 
     if (!skill_name) {
       return res.status(400).json({ message: "Skill name is required" });
@@ -36,6 +40,14 @@ export async function createSkill(req, res) {
 
   } catch (error) {
     console.error("Error in createSkill controller:", error);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.errors
+      });
+    }
+
     res.status(500).json({ message: "Internal server error" });
   }
 }

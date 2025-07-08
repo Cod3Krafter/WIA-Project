@@ -1,4 +1,5 @@
 import { connectDB } from "../config/db.js";
+import { applyToJobSchema } from "../schemas/jobApplicationInputValidation.js";
 
 export async function applyToJob(req, res) {
   const user = req.user;
@@ -15,6 +16,9 @@ export async function applyToJob(req, res) {
   }
 
   try {
+
+    await applyToJobSchema.validate(req.body, { abortEarly: false });
+
     const db = await connectDB();
 
     // Step 1: Get job title
@@ -66,6 +70,14 @@ export async function applyToJob(req, res) {
 
   } catch (error) {
     console.error("Error submitting application:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.errors
+      });
+    }
+    
     return res.status(500).json({ message: "Internal server error." });
   }
 }

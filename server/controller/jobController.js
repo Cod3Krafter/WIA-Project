@@ -1,4 +1,5 @@
 import { connectDB } from "../config/db.js";
+import { createJobSchema } from "../schemas/createJobInputValidation.js";
 
 export async function createJob(req, res) {
   const user = req.user; // From JWT middleware
@@ -17,6 +18,10 @@ export async function createJob(req, res) {
   }
 
   try {
+
+    //  Validate input
+    await createJobSchema.validate(req.body, { abortEarly: false })
+
     const db = await connectDB();
 
     await new Promise((resolve, reject) => {
@@ -36,6 +41,14 @@ export async function createJob(req, res) {
     return res.status(201).json({ message: "Job created successfully." });
   } catch (error) {
     console.error("Error creating job:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.errors
+      })
+    }
+    
     return res.status(500).json({ message: "Internal server error" });
   }
 }

@@ -1,4 +1,5 @@
 import { connectDB } from "../config/db.js"
+import { updateUserSchema } from "../schemas/userInputValidation.js";
 
 export async function getUserById(req, res) {
   const { id } = req.params;
@@ -50,6 +51,10 @@ export async function updateUser(req, res) {
   }
 
   try {
+
+    // ✅ Validate input
+    await updateUserSchema.validate(req.body, { abortEarly: false });
+
     const db = await connectDB();
 
     // Step 1: Fetch the existing user
@@ -98,6 +103,14 @@ export async function updateUser(req, res) {
 
   } catch (error) {
     console.error("Error updating user:", error);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.errors
+      });
+    }
+
     return res.status(500).json({ message: "Internal server error" });
   }
 }

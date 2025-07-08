@@ -1,3 +1,4 @@
+import { generalRateLimiter } from './middleware/rateLimiter.js'
 import express from 'express'
 import dotenv from 'dotenv'
 import { connectDB } from './config/db.js'
@@ -15,6 +16,7 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // Middleware
+app.use(generalRateLimiter)
 app.use(express.json())
 
 // Routes

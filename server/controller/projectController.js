@@ -1,4 +1,5 @@
 import { connectDB } from "../config/db.js";
+import { createProjectSchema, updateProjectSchema } from "../schemas/projectInputValidation.js";
 
 export async function createProject(req, res) {
   const user = req.user;
@@ -17,6 +18,9 @@ export async function createProject(req, res) {
   }
 
   try {
+    // Validate input
+    await createProjectSchema.validate(req.body, { abortEarly: false });
+    
     const db = await connectDB();
 
     // Check if the skill exists and belongs to this freelancer
@@ -141,6 +145,7 @@ export async function getProjectById(req, res) {
   }
 }
 
+
 export async function updateProject(req, res) {
   const { id } = req.params;
   const user = req.user;
@@ -158,6 +163,8 @@ export async function updateProject(req, res) {
   }
 
   try {
+    //  Validate input / Request body
+    await updateProjectSchema.validate(req.body, { abortEarly: false })
     const db = await connectDB();
 
     // Step 1: Get the project and confirm ownership via skills table
@@ -211,9 +218,18 @@ export async function updateProject(req, res) {
 
   } catch (error) {
     console.error("Error updating project:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.errors
+      })
+    }
+
     return res.status(500).json({ message: "Internal server error" });
   }
 }
+
 
 export async function deleteProject(req, res) {
   const { id } = req.params;

@@ -8,7 +8,7 @@ export const connectDB = async () => {
                 if (err) {
                     reject(err);
                 } else {
-                    console.log('Connected to SQLite database');
+                    // console.log('Connected to SQLite database');
                     resolve(database);
                 }
             });
