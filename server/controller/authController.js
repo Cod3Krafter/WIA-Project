@@ -53,7 +53,7 @@ export async function registerUser(req, res) {
     } catch (error) {
         console.error("Error in the registerUser controller", error)
 
-        // ✅ Yup validation error
+        //  Yup validation error
         if (error.name === 'ValidationError') {
             return res.status(400).json({
                 message: "Validation failed",
@@ -69,7 +69,6 @@ export async function registerUser(req, res) {
         res.status(500).json({ message: "Internal server error" })
     }
 }
-
 
 export async function getUser(req, res) {
     try {
