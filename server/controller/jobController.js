@@ -1,57 +1,57 @@
 import { connectDB } from "../config/db.js";
 import { createJobSchema } from "../schemas/createJobInputValidation.js";
 
-export async function createJob(req, res) {
-  const user = req.user; // From JWT middleware
-  const user_id = user.id
-  const user_role = user.role
-  const { title, description, budget, category, deadline } = req.body;
+  export async function createJob(req, res) {
+    const user = req.user; // From JWT middleware
+    const user_id = user.id
+    const user_role = user.role
+    const { title, description, budget, category, deadline } = req.body;
 
-  // Only clients can create jobs
-  if (user_role !== 'client') {
-    return res.status(403).json({ message: "Only clients can create jobs." });
-  }
-
-  // Basic validation
-  if (!title || !description || !budget || !category || !deadline) {
-    return res.status(400).json({ message: "All fields are required." });
-  }
-
-  try {
-
-    //  Validate input
-    await createJobSchema.validate(req.body, { abortEarly: false })
-
-    const db = await connectDB();
-
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO jobs (client_id, title, description, budget, category, deadline)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [user_id, title, description, budget, category, deadline],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    db.close();
-
-    return res.status(201).json({ message: "Job created successfully." });
-  } catch (error) {
-    console.error("Error creating job:", error);
-
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: error.errors
-      })
+    // Only clients can create jobs
+    if (user_role !== 'client') {
+      return res.status(403).json({ message: "Only clients can create jobs." });
     }
-    
-    return res.status(500).json({ message: "Internal server error" });
+
+    // Basic validation
+    if (!title || !description || !budget || !category || !deadline) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    try {
+
+      //  Validate input
+      await createJobSchema.validate(req.body, { abortEarly: false })
+
+      const db = await connectDB();
+
+      await new Promise((resolve, reject) => {
+        db.run(
+          `INSERT INTO jobs (client_id, title, description, budget, category, deadline)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+          [user_id, title, description, budget, category, deadline],
+          function (err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+
+      db.close();
+
+      return res.status(201).json({ message: "Job created successfully." });
+    } catch (error) {
+      console.error("Error creating job:", error);
+
+      if (error.name === "ValidationError") {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
+        })
+      }
+      
+      return res.status(500).json({ message: "Internal server error" });
+    }
   }
-}
 
 export async function getAllJobs(req, res) {
   try {

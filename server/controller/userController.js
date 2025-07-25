@@ -1,6 +1,37 @@
 import { connectDB } from "../config/db.js"
 import { updateUserSchema } from "../schemas/userInputValidation.js";
 
+
+
+export async function getAllUsers(req, res) {
+  try {
+    const db = await connectDB();
+
+    const users = await new Promise((resolve, reject) => {
+      db.all(
+        `
+        SELECT 
+          id, first_name, last_name, email, role, bio, profile_picture, created_at
+        FROM users WHERE role = 'freelancer'
+        `,
+        [],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    db.close();
+
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+
 export async function getUserById(req, res) {
   const { id } = req.params;
 
@@ -52,7 +83,6 @@ export async function updateUser(req, res) {
 
   try {
 
-    // ✅ Validate input
     await updateUserSchema.validate(req.body, { abortEarly: false });
 
     const db = await connectDB();

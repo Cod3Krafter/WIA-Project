@@ -1,5 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 @import "tailwindcss";
+@plugin "daisyui";
 @import "tw-animate-css";
+
+
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -110,6 +115,11 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+
+body {
+    font-family: 'Nunito', sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -118,3 +128,4 @@
     @apply bg-background text-foreground;
   }
 }
+

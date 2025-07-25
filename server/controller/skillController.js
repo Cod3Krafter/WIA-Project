@@ -80,26 +80,47 @@ export async function getAllSkills(req, res) {
 }
 
 export async function getUserSkills(req, res) {
-  const user_id = req.user.id; // From JWT middleware
+  const user_id = req.user.id;
 
   try {
     const db = await connectDB();
 
+    // Get all skills for this user
     const skills = await new Promise((resolve, reject) => {
-      db.all("SELECT * FROM skills WHERE user_id = ?", [user_id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
+      db.all(
+        `SELECT * FROM skills WHERE user_id = ?`,
+        [user_id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
     });
 
-    db.close();
+    // For each skill, get projects
+    for (const skill of skills) {
+      const projects = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT * FROM projects WHERE skill_id = ?`,
+          [skill.id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          }
+        );
+      });
 
+      skill.projects = projects;
+    }
+
+    db.close();
     return res.status(200).json(skills);
   } catch (error) {
     console.error("Error fetching user skills:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
+
 
 
 export async function updateSkill(req, res) {

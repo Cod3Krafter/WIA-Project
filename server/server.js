@@ -1,6 +1,7 @@
 import { generalRateLimiter } from './middleware/rateLimiter.js'
 import express from 'express'
 import dotenv from 'dotenv'
+import cors from "cors"
 import { connectDB } from './config/db.js'
 import userRoutes from "./routes/userRoutes.js"
 import authRoutes from "./routes/authRoutes.js"
@@ -16,6 +17,11 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // Middleware
+app.use(cors({
+  origin: "http://localhost:5173", 
+  credentials: true, 
+}))
+
 app.use(generalRateLimiter)
 app.use(express.json())
 

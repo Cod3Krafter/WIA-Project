@@ -4,7 +4,7 @@ import { authenticateToken } from "../middleware/authenticateToken.js"
 
 const router = express.Router()
 
-router.get("/", getAllJobs)
+router.get("/jobposts", getAllJobs)
 router.get("/user",authenticateToken, getMyPostedJobs)
 router.post("/job", authenticateToken, createJob)
 router.delete("/:id", authenticateToken, deleteJob)
