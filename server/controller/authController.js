@@ -7,68 +7,54 @@ import { registerUserSchema, getUserSchema, loginUserSchema } from '../schemas/a
 
 
 export async function registerUser(req, res) {
-    try {
-          // Validate input
-        await registerUserSchema.validate(req.body, { abortEarly: false })
+  const { first_name, last_name, email, password, bio, profile_picture, roles } = req.body;
 
-        const { first_name,last_name, email, password, role, bio, profile_picture } = req.body
-        const saltRounds = 10
-        const hashedPassword = await bcrypt.hash(password, saltRounds)
-        const db = await connectDB()
+  if (!Array.isArray(roles) || roles.length === 0) {
+    return res.status(400).json({ message: "At least one role must be selected." });
+  }
 
-        // SQL Query to insert new user
-        const newUser = await new Promise((resolve, reject) => {
-            db.run(
-                "INSERT INTO users (first_name, last_name, email, password, role, bio, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [first_name,last_name, email, hashedPassword, role, bio, profile_picture],
-                function(err) {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        const userID = {id: this.lastID}
-                        console.log("This is the users ID",userID)
-                        resolve(userID)
-                    }
-                }
-            )
-        })
+  try {
+    const db = await connectDB();
 
-        // Get the created user
-        const createdUser = await new Promise((resolve, reject) => {
-            db.get(
-                "SELECT id, first_name, last_name, email, role, bio, profile_picture, created_at FROM users WHERE id = ?",
-                [newUser.id],
-                (err, row) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve(row)
-                    }
-                }
-            )
-        })
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-        db.close()
-        res.status(201).json(createdUser)
-    } catch (error) {
-        console.error("Error in the registerUser controller", error)
-
-        //  Yup validation error
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                message: "Validation failed",
-                errors: error.errors
-            })
+    // Insert into users
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO users (first_name, last_name, email, password, bio, profile_picture) VALUES (?, ?, ?, ?, ?, ?)`,
+        [first_name, last_name, email, hashedPassword, bio, profile_picture],
+        function (err) {
+          if (err) reject(err);
+          else resolve(this);
         }
-        
-        // Handle unique constraint violation for email
-        if (error.message.includes('UNIQUE constraint failed')) {
-            return res.status(400).json({ message: "Email already exists" })
-        }
-        
-        res.status(500).json({ message: "Internal server error" })
+      );
+    });
+
+    const userId = result.lastID;
+
+    // Insert roles into user_roles
+    for (const role of roles) {
+      if (!['client', 'freelancer'].includes(role)) {
+        return res.status(400).json({ message: `Invalid role: ${role}` });
+      }
+
+      await new Promise((resolve, reject) => {
+        db.run(
+          `INSERT INTO user_roles (user_id, role) VALUES (?, ?)`,
+          [userId, role],
+          (err) => (err ? reject(err) : resolve())
+        );
+      });
     }
+
+    res.status(201).json({ message: "User registered successfully." });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
 }
+
 
 export async function getUser(req, res) {
     try {
@@ -108,75 +94,80 @@ export async function getUser(req, res) {
     }
 }
 
+
 export async function loginUser(req, res) {
-    try {
-         // Validate input
-        await loginUserSchema.validate(req.body, { abortEarly: false })
+  try {
+    await loginUserSchema.validate(req.body, { abortEarly: false });
 
-        const { email, password } = req.body
-        const db = await connectDB()
+    const { email, password } = req.body;
+    const db = await connectDB();
 
-        // Find user by email
-        const user = await new Promise((resolve, reject) => {
-            db.get(
-                "SELECT * FROM users WHERE email = ?",
-                [email],
-                (err, row) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve(row)
-                    }
-                }
-            )
-        })
-        db.close()
-        console.log(user)
+    // Find user
+    const user = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        (err, row) => (err ? reject(err) : resolve(row))
+      );
+    });
 
-        // Check if user existsr, return ends the function if the condition is met
-        if (!user) {
-            return res.status(401).json({ message: "Invalid email or password" })
-        }
-
-        // Check password (you should use bcrypt.compare() for hashed passwords)
-        const isPasswordValid = await bcrypt.compare(password, user.password)
-
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Invalid email or password" })
-        }else{
-            // jwt payload to sign the user
-            const { id, email, role } = user
-            const userPayload = {id, email, role}
-            const accessToken = jwt.sign(userPayload, process.env.ACCESS_TOKEN, {expiresIn:"15m"})
-
-            const refreshToken = jwt.sign(userPayload, process.env.REFRESH_TOKEN, { expiresIn: "7d" })
-
-            // Send refresh token as HTTP-only cookie
-            res.cookie("refreshToken", refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production", // Use true in production (HTTPS)
-                sameSite: "Strict", // or "Lax" depending on use
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-            })
-
-
-            res.status(200).json({
-                message: "Login successful",
-                accessToken: accessToken,
-            })
-        }
-
-    } catch (error) {
-        console.error("Error in the loginUser controller", error)
-         if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                message: "Validation failed",
-                errors: error.errors
-            })
-        }
-        res.status(500).json({ message: "Internal server error" })
+    if (!user) {
+      db.close();
+      return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      db.close();
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Get all roles for this user
+    const roles = await new Promise((resolve, reject) => {
+      db.all(
+        "SELECT role FROM user_roles WHERE user_id = ?",
+        [user.id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows.map(row => row.role));
+        }
+      );
+    });
+
+    db.close();
+
+    // Construct payload with all roles and a default role
+    const userPayload = {
+      id: user.id,
+      email: user.email,
+      roles,              // array of roles: ['client', 'freelancer']
+      role: roles[0],     // default active role (first one)
+    };
+
+    const accessToken = jwt.sign(userPayload, process.env.ACCESS_TOKEN, { expiresIn: "15m" });
+    const refreshToken = jwt.sign(userPayload, process.env.REFRESH_TOKEN, { expiresIn: "7d" });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      accessToken,
+    });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: "Validation failed", errors: error.errors });
+    }
+    res.status(500).json({ message: "Internal server error" });
+  }
 }
+
 
 export function logoutUser(req, res) {
     res.clearCookie('refreshToken', {

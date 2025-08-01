@@ -1,84 +1,149 @@
-const JobApplyModal = ({ selectedJob, formData, setFormData }) => {
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+import { Formik } from "formik";
+import toast from "react-hot-toast";
+import api from "../../lib/axios";
+import {jobApplicationSchema} from "../../lib/validation/JobApplicationSchema.jsx";
 
-    try {
-      const response = await fetch("/applyToJob", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ job_id: selectedJob?.id, ...formData }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        alert(result.message || "Failed to apply.");
-      } else {
-        alert("Application submitted successfully.");
-        document.getElementById("apply-modal")?.close();
-        setFormData({
-          proposal: "",
-          expected_budget: "",
-          freelancer_contact: "",
-        });
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Something went wrong.");
-    }
-  };
-
+const JobApplyModal = ({ selectedJob }) => {
   return (
     <dialog id="apply-modal" className="modal">
-      <div className="modal-box max-w-xl">
-        <h3 className="font-bold text-lg mb-4">Apply to {selectedJob?.title}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="label">Proposal</label>
-            <textarea
-              className="textarea textarea-bordered w-full"
-              value={formData.proposal}
-              onChange={(e) => setFormData({ ...formData, proposal: e.target.value })}
-              required
-            />
-          </div>
+      <div className="modal-box max-w-full">
+        {selectedJob && (
+          <div className="flex gap-10">
+            {/* 🧾 Job Details */}
+            <div className="flex flex-1 flex-col gap-5">
+              <div className="p-5 flex flex-col gap-2 justify-center bg-base-200">
+                <h3 className="text-3xl font-bold mb-2">{selectedJob.title}</h3>
+                <p className="text-2xl font-extrabold">${selectedJob.budget}</p>
+                <p className="text-lg">{selectedJob.category}</p>
+                <p className="text-lg text-red-600">
+                  <strong>Deadline:</strong> {selectedJob.deadline}
+                </p>
+              </div>
 
-          <div>
-            <label className="label">Expected Budget</label>
-            <input
-              type="number"
-              className="input input-bordered w-full"
-              value={formData.expected_budget}
-              onChange={(e) => setFormData({ ...formData, expected_budget: e.target.value })}
-              required
-            />
-          </div>
+              <div className="bg-base-300">
+                <p className="text-white mb-3 p-5">{selectedJob.description}</p>
+              </div>
+            </div>
 
-          <div>
-            <label className="label">Freelancer Contact</label>
-            <input
-              type="text"
-              className="input input-bordered w-full"
-              value={formData.freelancer_contact}
-              onChange={(e) => setFormData({ ...formData, freelancer_contact: e.target.value })}
-              required
-            />
-          </div>
+            {/* ✍️ Application Form */}
+            <Formik
+              initialValues={{
+                proposal: "",
+                expected_budget: "",
+                freelancer_contact: "",
+              }}
+              validationSchema={jobApplicationSchema}
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                try {
+                  await api.post("/job-applications", {
+                    job_id: selectedJob.id,
+                    ...values,
+                    expected_budget: Number(values.expected_budget),
+                  });
+                  document.getElementById("apply-modal")?.close();
+                  toast.success("Job application submitted");
+                  resetForm();
+                } catch (err) {
+                  if (err.response?.status === 409) {
+                    document.getElementById("apply-modal")?.close();
+                    toast.error("You have already applied for this job.");
+                    resetForm()
+                  } else {
+                    console.error("Error applying to job:", err);
+                    toast.error("Something went wrong");
+                  }
+                  } finally {
+                    setSubmitting(false);
+                  }
+              }}
+            >
+              {({
+                values,
+                errors,
+                touched,
+                handleChange,
+                handleSubmit,
+                isSubmitting,
+              }) => (
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex-1 space-y-8 px-7 py-4 bg-base-300"
+                >
+                  <div>
+                    <label className="my-2 text-xl label font-semibold">
+                      Proposal
+                    </label>
+                    <textarea
+                      name="proposal"
+                      className="textarea text-lg textarea-bordered w-full min-h-[300px]"
+                      value={values.proposal}
+                      onChange={handleChange}
+                    />
+                    {touched.proposal && errors.proposal && (
+                      <p className="text-red-500">{errors.proposal}</p>
+                    )}
+                  </div>
 
-          <div className="modal-action">
-            <button type="submit" className="btn btn-primary">
-              Submit Application
-            </button>
+                  <div>
+                    <label className="label font-semibold mb-1">
+                      Proposed Budget
+                    </label>
+                    <input
+                      type="number"
+                      name="expected_budget"
+                      className="input input-bordered w-full"
+                      value={values.expected_budget}
+                      onChange={handleChange}
+                    />
+                    {touched.expected_budget && errors.expected_budget && (
+                      <p className="text-red-500">{errors.expected_budget}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="label font-semibold mb-1">
+                      Your Contact Info
+                    </label>
+                    <input
+                      type="text"
+                      name="freelancer_contact"
+                      className="input input-bordered w-full"
+                      value={values.freelancer_contact}
+                      onChange={handleChange}
+                    />
+                    {touched.freelancer_contact && errors.freelancer_contact && (
+                      <p className="text-red-500">
+                        {errors.freelancer_contact}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="modal-action flex justify-between">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() =>
+                        document.getElementById("apply-modal")?.close()
+                      }
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Application"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </Formik>
           </div>
-        </form>
-            <form method="dialog">
-              <button className="btn">Cancel</button>
-            </form>
+        )}
       </div>
     </dialog>
   );
 };
 
 export default JobApplyModal;
-    

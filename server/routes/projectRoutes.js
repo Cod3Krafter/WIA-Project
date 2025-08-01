@@ -6,8 +6,8 @@ const router = express.Router()
 
 // Freelancers can add their projects
 router.post("/", authenticateToken, createProject)
+// router.get("/skill/:skill_id", authenticateToken, getProjectsBySkill)
 router.get("/:id", authenticateToken, getProjectById)
-router.get("/skill/:skill_id", authenticateToken, getProjectsBySkill)
 router.put('/:id', authenticateToken, updateProject);
 router.delete('/:id', authenticateToken, deleteProject);
 

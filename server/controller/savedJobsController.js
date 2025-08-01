@@ -54,7 +54,11 @@ export async function toggleSaveJob(req, res) {
       });
 
       db.close();
-      return res.status(200).json({ message: "Job unsaved successfully." });
+      return res.status(200).json({ 
+        message: "Job unsaved successfully.",
+        action: "unsaved",
+        jobId: job_id
+      });
     } else {
       // Save the job
       await new Promise((resolve, reject) => {
@@ -69,7 +73,11 @@ export async function toggleSaveJob(req, res) {
       });
 
       db.close();
-      return res.status(201).json({ message: "Job saved successfully." });
+      return res.status(201).json({ 
+        message: "Job saved successfully.",
+        action: "saved",
+        jobId: job_id
+      });
     }
 
   } catch (error) {

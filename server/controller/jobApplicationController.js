@@ -82,7 +82,6 @@ export async function applyToJob(req, res) {
   }
 }
 
-
 export async function getApplicationsForJob(req, res) {
   const user = req.user;
   const user_id = user.id;
@@ -136,9 +135,12 @@ export async function getApplicationsForJob(req, res) {
 export async function getMyJobApplications(req, res) {
   const user = req.user;
   const user_id = user.id;
-  const user_role = user.role;
 
-  if (user_role !== 'freelancer') {
+  // Get the role being "actively" used by the frontend
+  const selectedRole = req.headers["x-active-role"];
+
+  // Ensure the role is present and is 'freelancer'
+  if (!selectedRole || selectedRole !== 'freelancer') {
     return res.status(403).json({ message: "Only freelancers can view their job applications." });
   }
 
@@ -165,11 +167,13 @@ export async function getMyJobApplications(req, res) {
       return res.status(200).json({ message: "You have not applied to any jobs yet.", applications: [] });
     }
 
-    return res.status(200).json(applications);
+    return res.status(200).json({ applications });
+
   } catch (error) {
     console.error("Error fetching job applications:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
+
 
 

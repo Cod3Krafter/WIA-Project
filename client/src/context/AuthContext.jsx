@@ -5,26 +5,26 @@ import { jwtDecode } from "jwt-decode";
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [activeRole, setActiveRole] = useState(null); // ✅ Add this
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing token on component mount
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
+    const savedRole = localStorage.getItem("userRole");
+
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        
-        // Check if token is expired
         const currentTime = Date.now() / 1000;
+
         if (decoded.exp && decoded.exp < currentTime) {
-          // Token is expired, remove it
           localStorage.removeItem("accessToken");
           setIsAuthenticated(false);
           setUser(null);
         } else {
-          // Token is valid, restore auth state
           setIsAuthenticated(true);
           setUser(decoded);
+          setActiveRole(savedRole || decoded.role);
         }
       } catch (err) {
         console.error("Failed to decode token on init:", err);
@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
     }
+
     setIsLoading(false);
   }, []);
 
@@ -41,7 +42,9 @@ export const AuthProvider = ({ children }) => {
       const decoded = jwtDecode(token);
       localStorage.setItem("accessToken", token);
       setIsAuthenticated(true);
-      setUser(decoded.user);
+      setUser(decoded);
+      setActiveRole(decoded.role); // ✅ Set role on login
+      localStorage.setItem("userRole", decoded.role);
     } catch (err) {
       console.error("Failed to decode token on login:", err);
     }
@@ -49,17 +52,22 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("userRole");
     setIsAuthenticated(false);
     setUser(null);
+    setActiveRole(null);
   };
 
-  // Don't render children until we've checked for existing auth
-  if (isLoading) {
-    return <div>Loading...</div>; // Or your loading component
-  }
+  const switchRole = (newRole) => {
+    if (!user) return;
+    setActiveRole(newRole);
+    localStorage.setItem("userRole", newRole);
+  };
+
+  if (isLoading) return <div>Loading...</div>;
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, activeRole, login, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );

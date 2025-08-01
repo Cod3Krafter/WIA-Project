@@ -7,7 +7,7 @@ const ExploreTab = ({ activeTab, setActiveTab }) => {
   return (
     <div
       role="tablist"
-      className="tabs tabs-box tabs-xl gap-5 bg-base-200 rounded-xl mb-6 shadow"
+      className="tabs tabs-box tabs-xl p-2 gap-5 bg-base-200 rounded-xl mb-6 shadow"
     >
       {tabs.map(({ key, label }) => (
         <button

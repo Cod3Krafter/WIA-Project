@@ -1,30 +1,14 @@
-import React, { useEffect, useState } from "react";
+// SkillsAndProjects.jsx
+import React, { useState } from "react";
 import ProjectModal from "./ProjectModal";
-import api from "../../../lib/axios.js";
 
-const SkillsAndProjects = () => {
-  const [skills, setSkills] = useState([]);
+const SkillsAndProjects = ({ skills }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedProject, setSelectedProject] = useState(null);
 
-  useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await api.get("/skills", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        setSkills(res.data);
-      } catch (err) {
-        console.error("Failed to fetch skills:", err);
-      }
-    };
-
-    fetchSkills();
-  }, []);
+    if (!Array.isArray(skills)) {
+    return <p>No skills available</p>;
+  }
 
   return (
     <>

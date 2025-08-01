@@ -1,7 +1,37 @@
-import React, { useState } from "react";
+// ./client/ApplicantsList.jsx
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
-const ApplicantsList = ({ applicants, onClose }) => {
-  const [selected, setSelected] = useState(applicants[0]);
+const ApplicantsList = ({ jobId, onClose }) => {
+  const [applicants, setApplicants] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`/api/job-applications/${jobId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setApplicants(res.data);
+        setSelected(res.data[0] || null);
+      } catch (err) {
+        console.error("Failed to fetch applicants:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (jobId) {
+      fetchApplicants();
+    }
+  }, [jobId]);
+
+  if (loading) return null; // or a spinner
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
@@ -36,9 +66,17 @@ const ApplicantsList = ({ applicants, onClose }) => {
 
           {selected ? (
             <div className="space-y-3">
-              <p><span className="font-semibold">Name:</span> {selected.name}</p>
-              <p><span className="font-semibold">Email:</span> {selected.email}</p>
-              {selected.bio && <p><span className="font-semibold">Bio:</span> {selected.bio}</p>}
+              <p>
+                <span className="font-semibold">Name:</span> {selected.name}
+              </p>
+              <p>
+                <span className="font-semibold">Email:</span> {selected.email}
+              </p>
+              {selected.bio && (
+                <p>
+                  <span className="font-semibold">Bio:</span> {selected.bio}
+                </p>
+              )}
               {selected.skills && (
                 <div>
                   <span className="font-semibold">Skills:</span>

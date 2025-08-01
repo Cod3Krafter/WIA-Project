@@ -20,6 +20,7 @@ export function authenticateToken(req, res, next) {
         req.user = decoded
         
         // Continue to next middleware/route handler
+        console.log("Authenticated user from token:", req.user);
         next()
         
     } catch (error) {

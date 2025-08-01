@@ -16,34 +16,23 @@ const ExploreSection = () => {
     freelancer_contact: "",
   });
 
-  const fetchFreelancers = async () => {
-    try {
-      const token = localStorage.getItem('accessToken')
-      const res = await api.get("/users/freelancers", {
-        headers:{
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setFreelancers(res.data || []);
-      console.log(res.data)
-    } catch (err) {
-      console.error("Error fetching freelancers:", err);
-    }
-  };
+const fetchFreelancers = async () => {
+  try {
+    const res = await api.get("/users/freelancers");
+    setFreelancers(res.data || []);
+  } catch (err) {
+    console.error("Error fetching freelancers:", err);
+  }
+};
 
-  const fetchJobs = async () => {
-    const token = localStorage.getItem('accessToken')
-    try {
-      const res = await api.get("/jobs/jobposts", {
-        headers:{
-          Authorization:`Bearer ${token}`
-        }
-      });
-      setJobs(res.data || []);
-    } catch (err) {
-      console.error("Error fetching jobs:", err);
-    }
-  };
+const fetchJobs = async () => {
+  try {
+    const res = await api.get("/jobs/jobposts");
+    setJobs(res.data || []);
+  } catch (err) {
+    console.error("Error fetching jobs:", err);
+  }
+};
 
   useEffect(() => {
     if (activeTab === "freelancers") {
@@ -54,7 +43,7 @@ const ExploreSection = () => {
   }, [activeTab]);
 
   return (
-    <div className="relative bg-base-300 mt-10">
+    <div className="bg-base-300 mt-10">
       <div className="mx-auto px-4 py-6">
         <ExploreTab activeTab={activeTab} setActiveTab={setActiveTab} />
 

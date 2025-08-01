@@ -24,9 +24,11 @@ export const registerSchema = Yup.object().shape({
     .max(128, "Password must not exceed 128 characters")
     .required("Password is required"),
     
-  role: Yup.string()
-    .oneOf(['client', 'freelancer'], "Please select a valid role")
-    .required("Role is required"),
+  roles: Yup.array()
+  .of(Yup.string().oneOf(['client', 'freelancer']))
+  .min(1, "Select at least one role")
+  .required("Role is required"),
+
     
   bio: Yup.string()
     .trim()

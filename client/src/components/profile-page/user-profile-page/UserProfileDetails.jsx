@@ -1,10 +1,10 @@
 // ProfileDetails.jsx
-import React, { useEffect, useState } from "react";
-import SkillsAndProjects from "./freelancer/SkillsAndProjects";
-import Jobs from "../profile-page/freelancer/Jobs.jsx"
-import api from "../../lib/axios.js";
+import { useEffect, useState } from "react";
+import SkillsAndProjects from "../../profile-page/freelancer/SkillsAndProjects.jsx";
+import Jobs from "../../profile-page/freelancer/Jobs.jsx"
+import api from "../../../lib/axios.js";
 
-const ProfileDetails = () => {
+const UserProfileDetails = () => {
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +18,6 @@ const ProfileDetails = () => {
           },
         });
         setSkills(res.data.skills);
-        // console.log(res.data)
       } catch (err) {
         console.error("Failed to fetch skills:", err);
       } finally {
@@ -46,12 +45,12 @@ const ProfileDetails = () => {
         )}
       </div>
 
-      <input type="radio" name="profile_details_tab" className="tab" aria-label="Others" />
-      <div className="tab-content bg-base-100 p-6">
-          <p>Others</p>
-      </div>
+      <input type="radio" name="profile_details_tab" className="tab" aria-label="Jobs" />
+        <div className="tab-content bg-base-100 p-6">
+            <Jobs/>
+        </div>
     </div>
   );
 };
 
-export default ProfileDetails;
+export default UserProfileDetails;

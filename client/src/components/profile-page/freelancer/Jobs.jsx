@@ -1,66 +1,92 @@
-import React, { useEffect, useState } from "react";
-import api from "../../../lib/axios.js"; 
+import React, { useEffect, useState, useMemo } from "react";
+import api from "../../../lib/axios";
+import AppliedJobsCard from "../user-profile-page/AppliedJobsCard.jsx";
+import JobPostForm from "../client/JobPostForm.jsx";
+import { useAuth } from "../../../context/useAuth";
 
 const Jobs = () => {
-  const [tabs, setTabs] = useState([
-    { name: "Saved Jobs", content: "Jobs you've saved for later.", jobs: [] },
-    { name: "Applied Jobs", content: "Jobs you've applied to.", jobs: [] },
-  ]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const { activeRole } = useAuth();
+  const [activeTab, setActiveTab] = useState("");
+  const [appliedJobs, setAppliedJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Memoize tabs based on role
+  const tabs = useMemo(() => {
+    return activeRole === "freelancer"
+      ? ["Applied Jobs", "Saved Jobs"]
+      : ["Post Job", "Posted Jobs"];
+  }, [activeRole]);
+
+  // Set default tab when tabs change
   useEffect(() => {
-    async function fetchJobs() {
-      try {
-        const response = await api.get("/job-applications/my");
-
-        const appliedJobs = response.data.applications || response.data;
-
-        setTabs((prevTabs) => {
-          const updatedTabs = [...prevTabs];
-          updatedTabs[1].jobs = appliedJobs.map((job) => ({
-            title: job.job_title,
-            company: "Client", // or fetch client info if needed
-            description: job.proposal,
-          }));
-          return updatedTabs;
-        });
-      } catch (error) {
-        console.error("Failed to fetch applied jobs:", error);
-      }
+    if (tabs.length > 0) {
+      setActiveTab(tabs[0]);
     }
+  }, [tabs]);
 
-    fetchJobs();
-  }, []);
+  // Fetch jobs when activeTab or activeRole changes
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setLoading(true);
+      try {
+        const headers = { "x-active-role": activeRole };
+        let res;
+
+        if (activeTab === "Applied Jobs") {
+          res = await api.get("/job-applications/user", { headers });
+          setAppliedJobs(res.data.applications || []);
+          console.log(res.data.applications)
+        } else if (activeTab === "Saved Jobs") {
+          res = await api.get("/jobs/saved", { headers });
+          setAppliedJobs(res.data.saved || []);
+        } else if (activeTab === "Posted Jobs") {
+          res = await api.get("/jobs/posted", { headers });
+          setAppliedJobs(res.data.jobs || []);
+        }
+      } catch (err) {
+        console.error("Error fetching jobs:", err);
+        setAppliedJobs([]); // fallback to empty on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeTab && activeTab !== "Post Job") {
+      fetchJobs();
+    }
+  }, [activeTab, activeRole]);
 
   return (
-    <div className="tabs tabs-box flex flex-wrap">
-      {tabs.map((tab, index) => (
-        <React.Fragment key={index}>
-          <input
-            type="radio"
-            name="jobs_tab"
-            className="tab"
-            aria-label={tab.name}
-            checked={activeIndex === index}
-            onChange={() => setActiveIndex(index)}
-          />
-          <div className="tab-content bg-base-100 border-base-300 p-6 space-y-4">
-            <p className="text-lg font-medium">{tab.content}</p>
-            <div className="space-y-3">
-              {tab.jobs.map((job, i) => (
-                <div
-                  key={i}
-                  className="p-4 bg-base-200 rounded-lg shadow-sm border"
-                >
-                  <h3 className="text-md font-semibold">{job.title}</h3>
-                  <p className="text-sm text-gray-500">{job.company}</p>
-                  <p className="text-sm">{job.description}</p>
-                </div>
-              ))}
-            </div>
+    <div className="p-4 space-y-4">
+      {/* Tab Headers */}
+      <div className="tabs tabs-boxed bg-base-200 p-1 flex gap-2 rounded-md">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            className={`tab ${activeTab === tab ? "tab-active bg-primary text-white" : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-4 bg-base-100 rounded-md shadow">
+        {loading ? (
+          <p>Loading...</p>
+        ) : activeTab === "Post Job" ? (
+          <JobPostForm />
+        ) : appliedJobs.length === 0 ? (
+          <p className="text-gray-500">No jobs found.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {appliedJobs.map((appliedJob, index) => (
+              <AppliedJobsCard key={index} appliedJob={appliedJob} />
+            ))}
           </div>
-        </React.Fragment>
-      ))}
+        )}
+      </div>
     </div>
   );
 };

@@ -85,8 +85,39 @@ CREATE TABLE IF NOT EXISTS saved_jobs (
 );
 
 
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id INTEGER NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('client', 'freelancer')),
+  PRIMARY KEY (user_id, role),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 
+INSERT INTO user_roles (user_id, role)
+SELECT id, role FROM users;
 
+ALTER TABLE users DROP COLUMN role;
 
+INSERT INTO job_applications (
+  job_id, freelancer_id, job_title, proposal, expected_budget, freelancer_contact
+)
+VALUES 
+(1, 22, 'Frontend Developer', 'I have 3+ years of experience building responsive UIs with React.', '$2000', 'freelancer22@example.com'),
+(4, 22, 'Backend Developer', 'I can build secure RESTful APIs using Express.js.', '$1800', 'freelancer22@example.com'),
+(3, 22, 'Full Stack Developer', 'Experienced in MERN stack and project delivery.', '$3000', 'freelancer22@example.com'),
+(4, 22, 'UI/UX Designer', 'Expert in Figma with modern design sense.', '$1200', 'freelancer22@example.com'),
+(5, 22, 'DevOps Engineer', 'I automate deployments and manage cloud infrastructure.', '$1500', 'freelancer22@example.com');
 
+INSERT INTO jobs (client_id, title, description, budget, category, deadline)
+VALUES 
+(1, 'Website Redesign', 'Redesign the landing page of a fashion e-commerce website to improve conversion.', '500', 'Web Development', '2025-08-15'),
+
+(2, 'Logo Creation', 'Design a minimal, modern logo for a tech startup based in Lagos.', '150', 'Graphic Design', '2025-08-01'),
+
+(3, 'Mobile App Testing', 'Test our React Native mobile app for bugs across Android and iOS.', '300', 'QA & Testing', '2025-08-10'),
+
+(4, 'Social Media Strategy', 'Develop a 30-day content strategy for Instagram and LinkedIn for a fintech brand.', '250', 'Digital Marketing', '2025-08-20'),
+
+(5, 'WordPress Site Fix', 'Fix broken layout on homepage and contact form issue on WordPress site.', '120', 'Web Development', '2025-07-30'),
+
+(6, 'E-book Formatting', 'Format a 20-page e-book in PDF with branding and proper layout.', '100', 'Writing & Translation', '2025-08-05');

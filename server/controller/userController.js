@@ -11,26 +11,35 @@ export async function getAllUsers(req, res) {
       db.all(
         `
         SELECT 
-          id, first_name, last_name, email, role, bio, profile_picture, created_at
-        FROM users WHERE role = 'freelancer'
+          u.id, u.first_name, u.last_name, u.email,
+          GROUP_CONCAT(ur.role) AS roles,
+          u.bio, u.profile_picture, u.created_at
+        FROM users u
+        JOIN user_roles ur ON u.id = ur.user_id
+        WHERE ur.role = 'freelancer'
+        GROUP BY u.id
         `,
         [],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else {
+            const formatted = rows.map((user) => ({
+              ...user,
+              roles: user.roles.split(","),
+            }));
+            resolve(formatted);
+          }
         }
       );
     });
 
     db.close();
-
     return res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
-
 
 export async function getUserById(req, res) {
   const { id } = req.params;
@@ -46,14 +55,23 @@ export async function getUserById(req, res) {
       db.get(
         `
         SELECT 
-          id, first_name, last_name, email, role, bio, profile_picture
-        FROM users
-        WHERE id = ?
+          u.id, u.first_name, u.last_name, u.email,
+          GROUP_CONCAT(ur.role) AS roles,
+          u.bio, u.profile_picture
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        WHERE u.id = ?
+        GROUP BY u.id
         `,
         [id],
         (err, row) => {
           if (err) reject(err);
-          else resolve(row);
+          else {
+            if (row) {
+              row.roles = row.roles ? row.roles.split(",") : [];
+            }
+            resolve(row);
+          }
         }
       );
     });
