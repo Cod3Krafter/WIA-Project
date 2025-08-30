@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AuthContext } from "./AuthContext";
 import { jwtDecode } from "jwt-decode"; 
+import LoadingPage from "../components/LoadingPage";
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -43,6 +44,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("accessToken", token);
       setIsAuthenticated(true);
       setUser(decoded);
+      console.log(decoded)
       setActiveRole(decoded.role); // ✅ Set role on login
       localStorage.setItem("userRole", decoded.role);
     } catch (err) {
@@ -64,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("userRole", newRole);
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <LoadingPage />;
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, activeRole, login, logout, switchRole }}>

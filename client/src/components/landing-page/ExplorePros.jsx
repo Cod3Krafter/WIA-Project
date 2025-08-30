@@ -1,11 +1,16 @@
 import React from 'react'
 import FreelancerCard from './FreelancerCard'
+import { useNavigate } from 'react-router-dom'
 import {Link} from 'react-router-dom'
 
 const ExplorePros = () => {
+  const navigate = useNavigate();
+  const handleViewProfile = () =>{
+    navigate(`/login`);
+  }
   return (
     <section className="py-12 bg-base-100 text-base-content">
-      <div className="max-w-7xl mx-auto px-4 text-center space-y-20">
+      <div className="max-w-7xl mx-auto px-4 lg:text-center space-y-20">
 
         {/* Section Title */}
         <h2 className="text-4xl font-bold">Explore various professionals</h2>
@@ -27,7 +32,7 @@ const ExplorePros = () => {
               ],
               created_at: "2025-07-01T12:00:00Z",
             }}
-            onViewProfile={(freelancer) => console.log("View", freelancer)}
+            onViewProfile={()=>{handleViewProfile()}}
             />
           ))}
 

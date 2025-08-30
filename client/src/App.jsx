@@ -6,8 +6,9 @@ import Layout from "./components/Layout.jsx";
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import ProtectedRoute from "./routes/ProtectedRoutes.jsx";
-import NotFoundPage from "./pages/NotFoundPage.jsx"; // <- import it
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
+import TooManyRequests from "./components/TooManyRequestsPage.jsx";
 
 function App() {
   return (
@@ -47,7 +48,8 @@ function App() {
         }>
         </Route>
         </Route>
-
+        {/* Too Many Requests Page */}
+        <Route path="/too-many-requests" element={<TooManyRequests />} />
         {/* 404 Page */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

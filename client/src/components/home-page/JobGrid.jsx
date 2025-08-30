@@ -21,8 +21,8 @@ const JobGrid = ({ jobs, setSelectedJob }) => {
     fetchSavedJobs();
   }, []);
 
+
   const handleSaveJob = async (jobId) => {
-    // Prevent multiple clicks while saving
     if (savingJobs.has(jobId)) return;
 
     setSavingJobs(prev => new Set([...prev, jobId]));
@@ -30,7 +30,6 @@ const JobGrid = ({ jobs, setSelectedJob }) => {
     try {
       const res = await api.post("/saved-jobs", { job_id: jobId });
       
-      // Update saved jobs state based on the response
       if (res.data.message.includes("unsaved")) {
         setSavedJobs(prev => {
           const newSet = new Set(prev);
@@ -60,12 +59,25 @@ const JobGrid = ({ jobs, setSelectedJob }) => {
         jobs.map((job) => {
           const isSaved = savedJobs.has(job.id);
           const isSaving = savingJobs.has(job.id);
-          
+          const status = job.status
+
           return (
             <div
               key={job.id}
               className="card bg-base-100 shadow-md p-10 flex flex-col justify-between"
             >
+              <div className="flex justify-end p-1">
+                <div 
+                  className={`badge min-h-[30px] p-3 px-5 text-lg rounded-full ${
+                    status === "open"
+                      ? "badge-outline badge-accent bg-[#0a534a]/30"
+                      : "badge-error text-white"
+                  }`}
+                >
+                  {status === "open" ? "Open" : "Closed"}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-3">
                 <h3 className="font-bold text-2xl mb-2">{job.title}</h3>
                 <p className="text-lg text-gray-400 h-[90px] overflow-hidden text-ellipsis line-clamp-3">
@@ -79,13 +91,20 @@ const JobGrid = ({ jobs, setSelectedJob }) => {
               <div className="w-full flex gap-5">
                 <button
                   onClick={() => {
+                    const role = localStorage.getItem("userRole");
+                    if (role !== "freelancer") {
+                      toast.error("Only freelancers can apply for jobs.");
+                      return;
+                    }
                     setSelectedJob(job);
                     document.getElementById("apply-modal")?.showModal();
                   }}
                   className="btn btn-primary flex-1 mt-4 py-6 text-lg"
+                  disabled={status === "closed"} // ✅ can't apply if job is closed
                 >
                   Apply
                 </button>
+
                 <button
                   onClick={() => handleSaveJob(job.id)}
                   disabled={isSaving}
@@ -107,7 +126,7 @@ const JobGrid = ({ jobs, setSelectedJob }) => {
           );
         })
       ) : (
-        <p className="col-span-full text-center">No jobs available.</p>
+        <p className="col-span-full text-center">No jobs available for your search.</p>
       )}
     </div>
   );

@@ -1,4 +1,3 @@
-// ./client/ApplicantsList.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -10,12 +9,7 @@ const ApplicantsList = ({ jobId, onClose }) => {
   useEffect(() => {
     const fetchApplicants = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(`/api/job-applications/${jobId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await axios.get(`/api/job-applications/${jobId}`);
 
         setApplicants(res.data);
         setSelected(res.data[0] || null);

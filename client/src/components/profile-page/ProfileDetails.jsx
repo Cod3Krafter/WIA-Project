@@ -1,24 +1,20 @@
-// ProfileDetails.jsx
 import React, { useEffect, useState } from "react";
-import SkillsAndProjects from "./freelancer/SkillsAndProjects";
-import Jobs from "../profile-page/freelancer/Jobs.jsx"
+import SkillsAndProjects from "./freelancer/SkillsAndProjects.jsx";
 import api from "../../lib/axios.js";
+import { useParams } from "react-router-dom";
 
 const ProfileDetails = () => {
+  const {id} = useParams();
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSkills = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        const res = await api.get("/skill", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setSkills(res.data.skills);
-        // console.log(res.data)
+        const res = await api.get(`/skill/user/${id}`);
+        setSkills(res.data);
+        console.log(res.data)
+        console.log(skills)
       } catch (err) {
         console.error("Failed to fetch skills:", err);
       } finally {
@@ -27,30 +23,31 @@ const ProfileDetails = () => {
     };
 
     fetchSkills();
-  }, []);   
-
+  }, []);
   return (
-    <div className="tabs tabs-box">
+    <div className="tabs tabs-boxed">
       <input
         type="radio"
         name="profile_details_tab"
-        className="tab"
+        className="tab text-lg"  // ⬅️ Increased font size
         aria-label="Skills and Projects"
         defaultChecked
       />
       <div className="tab-content bg-base-100 p-6">
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <SkillsAndProjects skills={skills} />
-        )}
+        {loading ? <p>Loading...</p> : <SkillsAndProjects skills={skills} />}
       </div>
 
-      <input type="radio" name="profile_details_tab" className="tab" aria-label="Others" />
+      <input
+        type="radio"
+        name="profile_details_tab"
+        className="tab text-lg"  // ⬅️ Increased font size
+        aria-label="Others"
+      />
       <div className="tab-content bg-base-100 p-6">
-          <p>Others</p>
+        <p>Others</p>
       </div>
     </div>
+
   );
 };
 

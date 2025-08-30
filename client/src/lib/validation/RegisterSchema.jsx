@@ -3,13 +3,13 @@ import * as Yup from 'yup';
 export const registerSchema = Yup.object().shape({
   first_name: Yup.string()
     .trim()
-    .min(2, "First name must be at least 2 characters")
+    .min(2, "Should be at least 2 characters")
     .max(50, "First name must not exceed 50 characters")
     .required("First name is required"),
     
   last_name: Yup.string()
     .trim()
-    .min(2, "Last name must be at least 2 characters")
+    .min(2, "Should be at least 2 characters")
     .max(50, "Last name must not exceed 50 characters")
     .required("Last name is required"),
     
@@ -23,10 +23,13 @@ export const registerSchema = Yup.object().shape({
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password must not exceed 128 characters")
     .required("Password is required"),
+  
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("password"), null], "Passwords must match")
+    .required("Please confirm your password"),
     
-  roles: Yup.array()
-  .of(Yup.string().oneOf(['client', 'freelancer']))
-  .min(1, "Select at least one role")
+  roles: Yup.string()
+  .oneOf(['client', 'freelancer'], "Select a valid role")
   .required("Role is required"),
 
     

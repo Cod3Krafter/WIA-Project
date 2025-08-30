@@ -8,41 +8,49 @@ const ProfilePage = () => {
   const { id } = useParams();
   const [user, setUser] = useState(null);
 
- useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
 
-      const res = await api.get(`/users/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+        const res = await api.get(`/users/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      setUser(res.data);
-    } catch (err) {
-      console.error("Error fetching user:", err);
-      // Optional: redirect if unauthorized
-      if (err.response?.status === 401) {
-        // Navigate to login or show error
-        console.log(err.response)
+        setUser(res.data);
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        if (err.response?.status === 401) {
+          console.log(err.response);
+        }
       }
-    }
-  };
+    };
 
-  if (id) fetchProfile();
-}, [id]);
+    if (id) fetchProfile();
+  }, [id]);
 
-
-  if (!user) return <div className="text-white">Loading profile...</div>;
+  if (!user)
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-base-200">
+        <p className="text-white text-lg">Loading profile...</p>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen flex gap-10 bg-base-200 text-base-content px-4 py-24 md:px-8 relative">
-      <ProfileHeader user={user} />
-      <div>
-        <ProfileDetails user={user} />
+    <div className="min-h-screen bg-base-200 text-base-content px-4 sm:px-6 md:px-8 lg:px-16 py-10 pt-35 flex flex-col md:flex-row gap-8 md:gap-12">
+      {/* Profile Header */}
+      <div className="w-full md:w-1/3 flex-shrink-0">
+        <ProfileHeader user={user} />
+      </div>
+
+      {/* Profile Details */}
+      <div className="w-full md:w-2/3">
+        <ProfileDetails user={user} onEditContacts={() => {}} />
       </div>
     </div>
+
   );
 };
 
