@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+ALTER TABLE jobs ADD COLUMN status TEXT DEFAULT 'open';
+
+
 CREATE TABLE IF NOT EXISTS job_applications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   job_id INTEGER,
@@ -108,16 +111,113 @@ VALUES
 (4, 22, 'UI/UX Designer', 'Expert in Figma with modern design sense.', '$1200', 'freelancer22@example.com'),
 (5, 22, 'DevOps Engineer', 'I automate deployments and manage cloud infrastructure.', '$1500', 'freelancer22@example.com');
 
-INSERT INTO jobs (client_id, title, description, budget, category, deadline)
+INSERT INTO jobs (client_id, title, description, budget, category, deadline, status)
+VALUES (
+  22,
+  'Time Machine Debugging',
+  'Fix critical bugs in our quantum-powered time machine. Must prevent paradoxes and ensure user does not meet past self.',
+  '88,000',
+  'Quantum Engineering',
+  '3025-01-01',
+  'open'
+);
+
+INSERT INTO job_applications 
+  (job_id, freelancer_id, job_title, proposal, expected_budget, freelancer_contact, status)
+VALUES
+  (42, 22, 'Time Machine Debugging', 'I have experience in temporal algorithms and paradox prevention.', '85000', 'freelancer13@example.com', 'pending'),
+  (42, 22, 'Time Machine Debugging', 'I can optimize quantum flux stabilizers for efficiency.', '90000', 'freelancer20@example.com', 'pending'),
+  (42, 22, 'Time Machine Debugging', 'I worked on wormhole safety protocols. Ready to contribute.', '87000', 'freelancer16@example.com', 'pending'),
+  (42, 22, 'Time Machine Debugging', 'Skilled in debugging interdimensional software glitches.', '88000', 'freelancer11@example.com', 'pending');
+
+
+
+
+
+INSERT INTO skills (user_id, skill_name, description)
+VALUES
+(22, 'React', 'Frontend library for building user interfaces.'),
+(22, 'Node.js', 'JavaScript runtime for backend development.'),
+(22, 'SQLite', 'Lightweight SQL database engine.'),
+(22, 'Tailwind CSS', 'Utility-first CSS framework for fast UI styling.');
+
+
+DROP TABLE IF EXISTS projects;
+
+CREATE TABLE projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_id INTEGER,
+  title TEXT,
+  description TEXT,
+  media_url TEXT,
+  price_range TEXT,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+-- React Projects (skill_id = 5)
+INSERT INTO projects (skill_id, title, description, media_url, price_range)
 VALUES 
-(1, 'Website Redesign', 'Redesign the landing page of a fashion e-commerce website to improve conversion.', '500', 'Web Development', '2025-08-15'),
+(5, 'React Portfolio', 'A personal portfolio site built with React and hosted on Vercel.', 'https://example.com/react-portfolio', '$100 - $200'),
+(5, 'Todo App', 'A task management app with component-based structure and state handling.', 'https://example.com/react-todo', '$80 - $150');
 
-(2, 'Logo Creation', 'Design a minimal, modern logo for a tech startup based in Lagos.', '150', 'Graphic Design', '2025-08-01'),
+-- Node.js Projects (skill_id = 6)
+INSERT INTO projects (skill_id, title, description, media_url, price_range)
+VALUES 
+(6, 'RESTful API Server', 'A Node.js backend for a blog platform using Express.', 'https://example.com/node-api', '$200 - $400'),
+(6, 'Authentication System', 'Secure JWT-based user authentication with Node and Express.', 'https://example.com/node-auth', '$150 - $250');
 
-(3, 'Mobile App Testing', 'Test our React Native mobile app for bugs across Android and iOS.', '300', 'QA & Testing', '2025-08-10'),
+-- SQLite Projects (skill_id = 7)
+INSERT INTO projects (skill_id, title, description, media_url, price_range)
+VALUES 
+(7, 'Student Record System', 'Simple student record management backend using SQLite.', 'https://example.com/sqlite-students', '$100 - $180'),
+(7, 'Offline Note App DB', 'A note-taking backend using SQLite for lightweight local storage.', 'https://example.com/sqlite-notes', '$90 - $140');
 
-(4, 'Social Media Strategy', 'Develop a 30-day content strategy for Instagram and LinkedIn for a fintech brand.', '250', 'Digital Marketing', '2025-08-20'),
+-- Tailwind CSS Projects (skill_id = 8)
+INSERT INTO projects (skill_id, title, description, media_url, price_range)
+VALUES 
+(8, 'Responsive Landing Page', 'Clean landing page UI built with Tailwind utilities.', 'https://example.com/tailwind-landing', '$70 - $120'),
+(8, 'Dashboard UI Kit', 'Modern admin dashboard interface built using Tailwind.', 'https://example.com/tailwind-dashboard', '$60 - $110');
 
-(5, 'WordPress Site Fix', 'Fix broken layout on homepage and contact form issue on WordPress site.', '120', 'Web Development', '2025-07-30'),
+CREATE TABLE contact_methods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  whatsapp TEXT,
+  email TEXT,
+  linkedin TEXT
+);
 
-(6, 'E-book Formatting', 'Format a 20-page e-book in PDF with branding and proper layout.', '100', 'Writing & Translation', '2025-08-05');
+INSERT INTO contact_methods (user_id, whatsapp, email, linkedin)
+VALUES (
+  22,
+  '+2348012345678',
+  'user22@example.com',
+  'https://www.linkedin.com/in/user22'
+);
+
+INSERT INTO contact_methods (user_id, whatsapp, email, linkedin) 
+VALUES 
+(23, '+2348012345679', 'user23@example.com', 'https://www.linkedin.com/in/user23'),
+(24, '+2348012345680', 'user24@example.com', 'https://www.linkedin.com/in/user24'),
+(25, '+2348012345681', 'user25@example.com', 'https://www.linkedin.com/in/user25'),
+(26, '+2348012345682', 'user26@example.com', 'https://www.linkedin.com/in/user26');
+
+
+SELECT * FROM contact_methods;
+
+ALTER TABLE projects ADD COLUMN contact_method_id INTEGER;
+
+ALTER TABLE job_applications
+ADD COLUMN status TEXT DEFAULT 'pending'; 
+
+INSERT INTO job_applications (job_id, freelancer_id, job_title, proposal, expected_budget, freelancer_contact)
+VALUES 
+(10, 22, 'Job Title for 10', 'My proposal for job 10', '1000', 'freelancer@example.com'),
+(11, 22, 'Job Title for 11', 'My proposal for job 11', '1200', 'freelancer@example.com'),
+(12, 22, 'Job Title for 12', 'My proposal for job 12', '900', 'freelancer@example.com'),
+(13, 22, 'Job Title for 13', 'My proposal for job 13', '1100', 'freelancer@example.com');
+
+
+
+
+
+

@@ -91,68 +91,128 @@ export async function getUserById(req, res) {
 
 export async function updateUser(req, res) {
   const { id } = req.params;
-  const user = req.user
-  const user_id = user.id;
-  const { first_name, last_name, email, bio, profile_picture } = req.body;
+  const authUser = req.user;
+  const user_id = authUser.id;
+
+  const {
+    first_name,
+    last_name,
+    email,
+    bio,
+    profile_picture,
+    whatsapp,
+    linkedin
+  } = req.body;
 
   if (parseInt(id) !== user_id) {
-    return res.status(403).json({ message: "You do not have permission to update this user." });
+    return res
+      .status(403)
+      .json({ message: "You do not have permission to update this user." });
   }
 
   try {
-
     await updateUserSchema.validate(req.body, { abortEarly: false });
 
     const db = await connectDB();
 
     // Step 1: Fetch the existing user
-    const user = await new Promise((resolve, reject) => {
+    const existingUser = await new Promise((resolve, reject) => {
       db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
     });
 
-    if (!user) {
+    if (!existingUser) {
       db.close();
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Step 2: Use existing values if fields not provided
-    const updatedFirstName = first_name || user.first_name;
-    const updatedLastName = last_name || user.last_name;
-    const updatedEmail = email || user.email;
-    const updatedBio = bio || user.bio;
-    const updatedProfilePic = profile_picture || user.profile_picture;
-
-    // Step 3: Perform the update
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE users 
-         SET first_name = ?, last_name = ?, email = ?, bio = ?, profile_picture = ?
-         WHERE id = ?`,
-        [
-          updatedFirstName,
-          updatedLastName,
-          updatedEmail,
-          updatedBio,
-          updatedProfilePic,
-          id
-        ],
-        function (err) {
+    // Step 2: Fetch contact methods
+    const existingContacts = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM contact_methods WHERE user_id = ?",
+        [id],
+        (err, row) => {
           if (err) reject(err);
-          else resolve();
+          else resolve(row);
         }
       );
     });
 
+    // Step 3: Use existing values if not provided
+    const updatedFirstName = first_name || existingUser.first_name;
+    const updatedLastName = last_name || existingUser.last_name;
+    const updatedEmail = email || existingUser.email;
+    const updatedBio = bio || existingUser.bio;
+    const updatedProfilePic =
+      profile_picture || existingUser.profile_picture;
+
+    const updatedWhatsapp =
+      whatsapp || (existingContacts ? existingContacts.whatsapp : null);
+    const updatedLinkedin =
+      linkedin || (existingContacts ? existingContacts.linkedin : null);
+    const updatedContactEmail =
+      email || (existingContacts ? existingContacts.email : existingUser.email);
+
+    // Step 4: Run updates inside a transaction
+    await new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+
+        // update users table
+        db.run(
+          `UPDATE users 
+           SET first_name = ?, last_name = ?, email = ?, bio = ?, profile_picture = ?
+           WHERE id = ?`,
+          [
+            updatedFirstName,
+            updatedLastName,
+            updatedEmail,
+            updatedBio,
+            updatedProfilePic,
+            id
+          ],
+          function (err) {
+            if (err) {
+              db.run("ROLLBACK");
+              reject(err);
+              return;
+            }
+          }
+        );
+
+        // upsert contact_methods (since user_id is unique)
+        db.run(
+          `INSERT INTO contact_methods (user_id, whatsapp, email, linkedin)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             whatsapp = excluded.whatsapp,
+             email = excluded.email,
+             linkedin = excluded.linkedin`,
+          [id, updatedWhatsapp, updatedContactEmail, updatedLinkedin],
+          function (err) {
+            if (err) {
+              db.run("ROLLBACK");
+              reject(err);
+              return;
+            }
+          }
+        );
+
+        db.run("COMMIT", (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    });
+
     db.close();
     return res.status(200).json({ message: "User profile updated successfully" });
-
   } catch (error) {
     console.error("Error updating user:", error);
 
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({
         message: "Validation failed",
         errors: error.errors
@@ -162,3 +222,4 @@ export async function updateUser(req, res) {
     return res.status(500).json({ message: "Internal server error" });
   }
 }
+

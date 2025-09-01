@@ -1,5 +1,5 @@
 import express from "express"
-import { applyToJob, getApplicationsForJob, getMyJobApplications } from "../controller/jobApplicationController.js"
+import { applyToJob, getApplicationsForJob, getMyJobApplications, deleteJobApplication } from "../controller/jobApplicationController.js"
 import { authenticateToken } from "../middleware/authenticateToken.js"
 
 const router = express.Router()
@@ -13,5 +13,8 @@ router.post("/",authenticateToken, applyToJob)
 
 // Freelancer can view jobs they've applied to
 router.get('/user', authenticateToken, getMyJobApplications);
+
+// Freelancer can delete their job applications
+router.delete('/user/:jobId', authenticateToken, deleteJobApplication);
 
 export default router

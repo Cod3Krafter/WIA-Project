@@ -89,11 +89,6 @@ export async function toggleSaveJob(req, res) {
 export async function getSavedJobs(req, res) {
   const user = req.user;
   const user_id = user.id;
-  const user_role = user.role;
-
-  if (user_role !== 'freelancer') {
-    return res.status(403).json({ message: "Only freelancers can view saved jobs." });
-  }
 
   try {
     const db = await connectDB();
@@ -134,6 +129,62 @@ export async function getSavedJobs(req, res) {
     return res.status(200).json({ jobs: savedJobs });
   } catch (error) {
     console.error("Error fetching saved jobs:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function deleteSavedJob(req, res) {
+  const user = req.user;
+  const user_id = user.id;
+  const user_role = user.role;
+  const { job_id } = req.params;
+
+  if (user_role !== 'freelancer') {
+    return res.status(403).json({ message: "Only freelancers can delete saved jobs." });
+  }
+
+  if (!job_id) {
+    return res.status(400).json({ message: "Job ID is required." });
+  }
+
+  try {
+    const db = await connectDB();
+
+    const existing = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
+        [user_id, job_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!existing) {
+      db.close();
+      return res.status(404).json({ message: "Saved job not found." });
+    }
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        "DELETE FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
+        [user_id, job_id],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    db.close();
+    return res.status(200).json({
+      message: "Saved job deleted successfully.",
+      jobId: job_id
+    });
+
+  } catch (error) {
+    console.error("Error deleting saved job:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

@@ -5,7 +5,7 @@ export async function createProject(req, res) {
   const user = req.user;
   const user_id = user.id;
   const user_role = user.role;
-  const { skill_id, title, description, media_url, price_range, contact_method_id } = req.body;
+  const { skill_id, title, description, media_url, price_range } = req.body;
 
   // Only freelancers can create projects
   if (user_role !== 'freelancer') {
@@ -13,7 +13,7 @@ export async function createProject(req, res) {
   }
 
   // Validate input
-  if (!skill_id || !title || !description || !price_range || !contact_method_id) {
+  if (!skill_id || !title || !description || !price_range) {
     return res.status(400).json({ message: "All required fields must be provided." });
   }
 
@@ -43,9 +43,9 @@ export async function createProject(req, res) {
     // Insert the project
     await new Promise((resolve, reject) => {
       db.run(
-        `INSERT INTO projects (skill_id, title, description, media_url, price_range, contact_method_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [skill_id, title, description, media_url || '', price_range, contact_method_id],
+        `INSERT INTO projects (skill_id, title, description, media_url, price_range)
+         VALUES (?, ?, ?, ?, ?)`,
+        [skill_id, title, description, media_url || '', price_range],
         function (err) {
           if (err) reject(err);
           else resolve();
@@ -152,7 +152,7 @@ export async function updateProject(req, res) {
   const user_id = user.id;
   const user_role = user.role;
 
-  const { title, description, media_url, price_range, contact_method_id } = req.body;
+  const { title, description, media_url, price_range } = req.body;
 
   if (!id) {
     return res.status(400).json({ message: "Project ID is required." });
@@ -196,14 +196,13 @@ export async function updateProject(req, res) {
     await new Promise((resolve, reject) => {
       db.run(
         `UPDATE projects
-         SET title = ?, description = ?, media_url = ?, price_range = ?, contact_method_id = ?
+         SET title = ?, description = ?, media_url = ?, price_range = ?
          WHERE id = ?`,
         [
           title || project.title,
           description || project.description,
           media_url || project.media_url,
           price_range || project.price_range,
-          contact_method_id || project.contact_method_id,
           id
         ],
         function (err) {

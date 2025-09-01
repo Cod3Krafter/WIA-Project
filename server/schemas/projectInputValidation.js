@@ -26,12 +26,6 @@ export const createProjectSchema = yup.object({
     .string()
     .min(3, "Price range must be a valid format (e.g., '100-500')")
     .required("Price range is required"),
-
-  contact_method_id: yup
-    .number()
-    .positive("Contact method ID must be a positive number")
-    .integer("Contact method ID must be an integer")
-    .required("Contact method ID is required"),
 })
 
 
@@ -54,11 +48,5 @@ export const updateProjectSchema = yup.object({
   price_range: yup
     .string()
     .min(3, "Price range must be a valid format (e.g., '100-500')")
-    .optional(),
-
-  contact_method_id: yup
-    .number()
-    .positive("Contact method ID must be a positive number")
-    .integer("Contact method ID must be an integer")
-    .optional(),
+    .optional()
 })

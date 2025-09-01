@@ -18,6 +18,20 @@ export async function registerUser(req, res) {
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const checkEmail = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (checkEmail) {
+      return res.status(400).json({ message: "Email already in use." });
+    }
 
     // Insert into users
     const result = await new Promise((resolve, reject) => {
@@ -140,6 +154,7 @@ export async function loginUser(req, res) {
     const userPayload = {
       id: user.id,
       email: user.email,
+      profile_picture: user.profile_picture,
       roles,              // array of roles: ['client', 'freelancer']
       role: roles[0],     // default active role (first one)
     };

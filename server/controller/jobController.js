@@ -4,11 +4,11 @@ import { createJobSchema } from "../schemas/createJobInputValidation.js";
 export async function createJob(req, res) {
   const user = req.user; // From JWT middleware
   const user_id = user.id
-  const user_role = user.role
+  const selectedRole = req.headers["x-active-role"];
   const { title, description, budget, category, deadline } = req.body;
 
   // Only clients can create jobs
-  if (user_role !== 'client') {
+  if (selectedRole !== 'client') {
     return res.status(403).json({ message: "Only clients can create jobs." });
   }
 
@@ -75,10 +75,11 @@ export async function getAllJobs(req, res) {
 
 export async function getMyPostedJobs(req, res) {
   const user = req.user;
-  const user_id = user.id;       // From JWT middleware
-  const user_role = user.role;   // From JWT middleware
+  const user_id = user.id; 
+  const selectedRole = req.headers["x-active-role"];
 
-  if (user_role !== 'client') {
+
+  if (selectedRole !== 'client') {
     return res.status(403).json({ message: "Only clients can view their posted jobs." });
   }
 
@@ -109,14 +110,67 @@ export async function getMyPostedJobs(req, res) {
   }
 }
 
+export async function updateJobPost(req, res) {
+  const { id } = req.params;
+  const { title, description, budget } = req.body;
+  const user_id = req.user.id;
+  const selectedRole = req.headers["x-active-role"];
+
+
+  // Ensure only clients can update jobs
+  if (selectedRole !== 'client') {
+    return res.status(403).json({ message: "Only clients can update jobs." });
+  }
+
+  try {
+    const db = await connectDB();
+
+    const job = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM jobs WHERE id = ?", [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!job) {
+      db.close();
+      return res.status(404).json({ message: "Job not found." });
+    }
+
+    if (job.client_id !== user_id) {
+      db.close();
+      return res.status(403).json({ message: "You do not have permission to update this job." });
+    }
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        "UPDATE jobs SET title = ?, description = ?, budget = ? WHERE id = ?",
+        [title, description, budget, id],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    db.close();
+
+    return res.status(200).json({ message: "Job updated successfully." });
+  } catch (error) {
+    console.error("Error updating job:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+}
+
 
 export async function deleteJob(req, res) {
   const { id } = req.params;
   const user_id = req.user.id; // from JWT middleware
-  const user_role = req.user.role; // from JWT middleware
+  const selectedRole = req.headers["x-active-role"];
+
 
   // Ensure only clients can delete jobs
-  if (user_role !== 'client') {
+  if (selectedRole !== 'client') {
     return res.status(403).json({ message: "Only clients can delete jobs." });
   }
 

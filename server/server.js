@@ -14,6 +14,8 @@ import jobRoutes from './routes/jobRoutes.js'
 import jobApplicationRoutes from './routes/jobApplicationRoutes.js'
 import projectRoutes from './routes/projectRoutes.js'
 import savedJobsRoutes from './routes/savedJobsRoutes.js'
+import contactRoutes from './routes/contactRoutes.js'
+import applicationStatusRoutes from './routes/applicationStatusRoutes.js'
 
 dotenv.config()
 
@@ -40,6 +42,13 @@ app.use('/api/jobs', jobRoutes)
 app.use('/api/job-applications', jobApplicationRoutes)
 app.use('/api/projects', projectRoutes)
 app.use('/api/saved-jobs', savedJobsRoutes)
+app.use('/api/contact', contactRoutes)
+app.use('/api/application-status', applicationStatusRoutes)
+
+// 404 for unknown API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'API route not found' });
+});
 
 // Serve static frontend in production
 app.use(express.static(path.join(__dirname, '../client/dist')))

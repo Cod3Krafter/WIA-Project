@@ -4,10 +4,11 @@ import { applyToJobSchema } from "../schemas/jobApplicationInputValidation.js";
 export async function applyToJob(req, res) {
   const user = req.user;
   const user_id = user.id;
-  const user_role = user.role;
+  const selectedRole = req.headers["x-active-role"];
+
   const { job_id, proposal, expected_budget, freelancer_contact } = req.body;
 
-  if (user_role !== 'freelancer') {
+  if (selectedRole !== 'freelancer') {
     return res.status(403).json({ message: "Only freelancers can apply for jobs." });
   }
 
@@ -85,10 +86,10 @@ export async function applyToJob(req, res) {
 export async function getApplicationsForJob(req, res) {
   const user = req.user;
   const user_id = user.id;
-  const user_role = user.role;
+  const selectedRole = req.headers["x-active-role"];
   const { job_id } = req.params;
 
-  if (user_role !== 'client') {
+  if (selectedRole !== 'client') {
     return res.status(403).json({ message: "Only clients can view applications for their jobs." });
   }
 
@@ -115,11 +116,28 @@ export async function getApplicationsForJob(req, res) {
     // Get all applications for the job
     const applications = await new Promise((resolve, reject) => {
       db.all(
-        "SELECT * FROM job_applications WHERE job_id = ? ORDER BY submitted_at DESC",
+        `SELECT 
+          ja.*, 
+          u.first_name, 
+          u.last_name
+        FROM job_applications ja
+        JOIN users u ON ja.freelancer_id = u.id
+        WHERE ja.job_id = ?
+        ORDER BY ja.submitted_at DESC`,
         [job_id],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else {
+            // Nest user fields under a "user" object
+            const formatted = rows.map(row => {
+              const { first_name, last_name, ...rest } = row;
+              return {
+                ...rest,
+                user: { first_name, last_name,}
+              };
+            });
+            resolve(formatted);
+          }
         }
       );
     });
@@ -171,6 +189,66 @@ export async function getMyJobApplications(req, res) {
 
   } catch (error) {
     console.error("Error fetching job applications:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+} 
+
+
+export async function deleteJobApplication(req, res) {
+  const user = req.user;
+  const user_id = user.id;
+  const { jobId } = req.params;
+
+  // Get the role being "actively" used by the frontend
+  const selectedRole = req.headers["x-active-role"];
+
+  // Ensure the role is present and is 'freelancer'
+  if (!selectedRole || selectedRole !== "freelancer") {
+    return res.status(403).json({ message: "Only freelancers can delete their job applications." });
+  }
+
+
+  if (!jobId) {
+    return res.status(400).json({ message: "Job ID is required." });
+  }
+
+  try {
+    const db = await connectDB();
+
+    // Ensure the application belongs to this freelancer
+    const application = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT id FROM job_applications WHERE job_id = ? AND freelancer_id = ?`,
+        [jobId, user_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!application) {
+      db.close();
+      return res.status(404).json({ message: "Application not found or you are not authorized to delete it." });
+    }
+
+    // Delete the application
+    await new Promise((resolve, reject) => {
+      db.run(
+        `DELETE FROM job_applications WHERE job_id = ? AND freelancer_id = ?`,
+        [jobId, user_id],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    db.close();
+
+    return res.status(200).json({ message: "Job application deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting job application:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
