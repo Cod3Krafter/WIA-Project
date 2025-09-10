@@ -9,6 +9,9 @@ import ProtectedRoute from "./routes/ProtectedRoutes.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
 import TooManyRequests from "./components/TooManyRequestsPage.jsx";
+import VerificationSentPage from "./pages/VerificationSentPage.jsx";
+import VerifyingEmailPage from "./pages/VerifyingEmailPage.jsx";
+import ResendEmailPage from "./pages/ResendEmailPage.jsx";
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
         {/* Public pages with no navbar/footer */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verification_sent" element={<VerificationSentPage />} />
+        <Route path="/verify-email" element={<VerifyingEmailPage />} />
+        <Route path="/resend-verification" element={<ResendEmailPage />} />
 
         {/* Pages wrapped with Navbar + Footer */}
         <Route element={<Layout />}>

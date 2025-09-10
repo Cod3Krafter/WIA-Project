@@ -91,7 +91,7 @@ export default function RegisterForm({ className, ...props }) {
         toast.success("🎉 Welcome to WIA! Registration successful!");
         localStorage.removeItem(wiaLocalRegForm);
         resetForm();
-        navigate("/login");
+        navigate("/verification_sent");
       } catch (error) {
         const msg = error.response?.data?.message || "Something went wrong";
         toast.error(msg);

@@ -8,7 +8,7 @@ import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+  // <StrictMode>
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
@@ -16,6 +16,6 @@ createRoot(document.getElementById('root')).render(
         <Toaster/>
       </BrowserRouter>
     </AuthProvider>
-  </StrictMode>
+  // </StrictMode>
 );
 

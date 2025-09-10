@@ -216,7 +216,8 @@ VALUES
 (12, 22, 'Job Title for 12', 'My proposal for job 12', '900', 'freelancer@example.com'),
 (13, 22, 'Job Title for 13', 'My proposal for job 13', '1100', 'freelancer@example.com');
 
-
+ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN verification_token TEXT;
 
 
 

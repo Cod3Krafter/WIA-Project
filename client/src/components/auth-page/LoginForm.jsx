@@ -25,18 +25,28 @@ export function LoginForm({ className, ...props }) {
     initialValues: { email: "", password: "" },
     validationSchema: loginSchema,
     onSubmit: async (values, { setSubmitting, resetForm }) => {
-      try {
-        const res = await api.post("/auth/login", values, { withCredentials: true });
-        login(res.data.accessToken);
-        toast.success("Login successful!");
-        navigate("/");
-        resetForm();
-      } catch (error) {
-        const message = error.response?.data?.message || error.message;
-        toast.error(message.includes("Invalid") ? "Invalid email or password" : "Something went wrong");
-      } finally { setSubmitting(false); }
-    }
-  });
+        try {
+          const res = await api.post("/auth/login", values, { withCredentials: true });
+          login(res.data.accessToken);
+          toast.success("Login successful!");
+          navigate("/");
+          resetForm();
+        } catch (error) {
+          const data = error.response?.data;
+
+          if (data?.emailVerificationRequired) {
+            toast.error(data.message || "Please verify your email before logging in.");
+            // Optionally navigate to resend page
+            navigate("/resend-verification");
+          } else {
+            const message = data?.message || error.message;
+            toast.error(message.includes("Invalid") ? "Invalid email or password" : "Something went wrong");
+          }
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    });
 
   const isValid = values.email && values.password && !errors.email && !errors.password;
 

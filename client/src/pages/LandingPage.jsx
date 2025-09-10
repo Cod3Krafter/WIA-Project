@@ -5,44 +5,10 @@ import Footer from '../components/Footer'
 import FeatureSection from '../components/landing-page/FeatureSection'
 import ExplorePros from '../components/landing-page/ExplorePros'
 import ClientsPay from '../components/landing-page/ClientsPay'
+import {fadeInUp, fadeInLeft, fadeInRight, fadeInDown} from "../components/ui/animations"
 import { motion } from 'framer-motion'
 
-// Variants for different directions
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40, position: "relative" },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 1, ease: "easeOut" } 
-  }
-}
 
-const fadeInLeft = {
-  hidden: { opacity: 0, x: -60, position: "relative" },
-  visible: { 
-    opacity: 1, 
-    x: 0, 
-    transition: { duration: 0.6, ease: "easeOut" } 
-  }
-}
-
-const fadeInRight = {
-  hidden: { opacity: 0, x: 30, position: "relative" },
-  visible: { 
-    opacity: 1, 
-    x: 0, 
-    transition: { duration: 0.6, ease: "easeOut" } 
-  }
-}
-
-const fadeInDown = {
-  hidden: { opacity: 0, y: -40, position: "relative" },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.6, ease: "easeOut" } 
-  }
-}
 
 const LandingPage = () => {
   return (

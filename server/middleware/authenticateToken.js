@@ -18,9 +18,6 @@ export function authenticateToken(req, res, next) {
         
         // Add user info to request object for use in protected routes
         req.user = decoded
-        
-        // Continue to next middleware/route handler
-        // console.log("Authenticated user from token:", req.user);
         next()
         
     } catch (error) {
