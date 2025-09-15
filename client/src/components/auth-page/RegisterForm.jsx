@@ -135,7 +135,7 @@ export default function RegisterForm({ className, ...props }) {
           console.log("⏳ Register form data expired and cleared!");
         }
       }
-    }, 5000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [resetForm]);
