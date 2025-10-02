@@ -10,15 +10,6 @@ import { sendVerificationEmail } from "../utils/mailer.js";
 
 dotenv.config();
 
-// Email transporter setup (configure with your email service)
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // or your preferred email service
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-})
-
 
 export async function registerUser(req, res) {
   const { first_name, last_name, email, password, bio, profile_picture, roles } = req.body;

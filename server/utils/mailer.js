@@ -1,25 +1,18 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Set the API key (store it in Render env vars)
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export async function sendVerificationEmail(to, firstName, verificationUrl) {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
+  const msg = {
     to,
+    from: process.env.EMAIL_USER, // must be a verified sender in SendGrid
     subject: "Please verify your email address",
     html: `
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2>Welcome ${firstName}!</h2>
         <p>Thank you for registering. Please click the button below to verify your email address:</p>
-        <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">
+        <a href="${verificationUrl}" style="display:inline-block;padding:12px 24px;background-color:#007bff;color:white;text-decoration:none;border-radius:5px;margin:20px 0;">
           Verify Email
         </a>
         <p>Or copy and paste this link in your browser:</p>
@@ -29,5 +22,14 @@ export async function sendVerificationEmail(to, firstName, verificationUrl) {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  try {
+    await sgMail.send(msg);
+    console.log("Verification email sent to", to);
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    if (error.response) {
+      console.error(error.response.body); // logs SendGrid error details
+    }
+    throw error;
+  }
 }
