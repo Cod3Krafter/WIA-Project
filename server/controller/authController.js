@@ -5,6 +5,8 @@ import crypto from "crypto"
 import { connectDB } from "../config/db.js"
 import dotenv from 'dotenv'
 import { registerUserSchema, getUserSchema, loginUserSchema } from '../schemas/authInputValidation.js'
+import { sendVerificationEmail } from "../utils/mailer.js";
+
 
 dotenv.config();
 
@@ -17,6 +19,7 @@ const transporter = nodemailer.createTransport({
   }
 })
 
+
 export async function registerUser(req, res) {
   const { first_name, last_name, email, password, bio, profile_picture, roles } = req.body;
 
@@ -27,10 +30,10 @@ export async function registerUser(req, res) {
   try {
     const db = await connectDB();
 
-    // Hash the password
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Check if email already exists
+    // Check if email exists
     const checkEmail = await new Promise((resolve, reject) => {
       db.get("SELECT * FROM users WHERE email = ?", [email], (err, row) =>
         err ? reject(err) : resolve(row)
@@ -42,7 +45,7 @@ export async function registerUser(req, res) {
       return res.status(400).json({ message: "Email already in use." });
     }
 
-    // Insert new user with email_verified = false
+    // Insert new user
     const result = await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO users (first_name, last_name, email, password, bio, profile_picture, email_verified) 
@@ -57,7 +60,7 @@ export async function registerUser(req, res) {
 
     const userId = result.lastID;
 
-    // Insert roles into user_roles
+    // Insert roles
     for (const role of roles) {
       if (!["client", "freelancer"].includes(role)) {
         db.close();
@@ -70,7 +73,7 @@ export async function registerUser(req, res) {
       });
     }
 
-    // Generate JWT token for email verification
+    // Generate verification token
     const verificationToken = jwt.sign(
       { id: userId, email },
       process.env.VERIFICATION_TOKEN,
@@ -84,26 +87,9 @@ export async function registerUser(req, res) {
 
     const verificationUrl = `${client_url}/verify-email?token=${verificationToken}`;
 
-    // Send verification email
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Please verify your email address",
-      html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Welcome ${first_name}!</h2>
-          <p>Thank you for registering. Please click the button below to verify your email address:</p>
-          <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">
-            Verify Email
-          </a>
-          <p>Or copy and paste this link in your browser:</p>
-          <p>${verificationUrl}</p>
-          <p>This link will expire in 24 hours.</p>
-        </div>
-      `,
-    };
+    // ✅ Use the mailer function
+    await sendVerificationEmail(email, first_name, verificationUrl);
 
-    await transporter.sendMail(mailOptions);
     db.close();
 
     res.status(201).json({
@@ -114,6 +100,7 @@ export async function registerUser(req, res) {
     res.status(500).json({ message: "Internal server error." });
   }
 }
+
 
 export async function verifyEmail(req, res) {
   try {
