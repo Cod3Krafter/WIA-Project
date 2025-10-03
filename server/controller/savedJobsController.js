@@ -1,5 +1,6 @@
 import { connectDB } from "../config/db.js";
 
+// Toggle save/unsave job
 export async function toggleSaveJob(req, res) {
   const user = req.user;
   const user_id = user.id;
@@ -17,63 +18,36 @@ export async function toggleSaveJob(req, res) {
   try {
     const db = await connectDB();
 
-    const job = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM jobs WHERE id = ?", [job_id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
-    if (!job) {
-      db.close();
+    // Check if job exists
+    const job = await db.query("SELECT * FROM jobs WHERE id = $1", [job_id]);
+    if (job.rows.length === 0) {
       return res.status(404).json({ message: "Job not found." });
     }
 
-    const existing = await new Promise((resolve, reject) => {
-      db.get(
-        "SELECT * FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
-        [user_id, job_id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
+    // Check if already saved
+    const existing = await db.query(
+      "SELECT * FROM saved_jobs WHERE freelancer_id = $1 AND job_id = $2",
+      [user_id, job_id]
+    );
+
+    if (existing.rows.length > 0) {
+      // Unsave job
+      await db.query(
+        "DELETE FROM saved_jobs WHERE freelancer_id = $1 AND job_id = $2",
+        [user_id, job_id]
       );
-    });
-
-    if (existing) {
-      // Unsave the job
-      await new Promise((resolve, reject) => {
-        db.run(
-          "DELETE FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
-          [user_id, job_id],
-          function (err) {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-
-      db.close();
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: "Job unsaved successfully.",
         action: "unsaved",
         jobId: job_id
       });
     } else {
-      // Save the job
-      await new Promise((resolve, reject) => {
-        db.run(
-          "INSERT INTO saved_jobs (freelancer_id, job_id) VALUES (?, ?)",
-          [user_id, job_id],
-          function (err) {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-
-      db.close();
-      return res.status(201).json({ 
+      // Save job
+      await db.query(
+        "INSERT INTO saved_jobs (freelancer_id, job_id) VALUES ($1, $2)",
+        [user_id, job_id]
+      );
+      return res.status(201).json({
         message: "Job saved successfully.",
         action: "saved",
         jobId: job_id
@@ -86,6 +60,7 @@ export async function toggleSaveJob(req, res) {
   }
 }
 
+// Get all saved jobs for a freelancer
 export async function getSavedJobs(req, res) {
   const user = req.user;
   const user_id = user.id;
@@ -93,46 +68,39 @@ export async function getSavedJobs(req, res) {
   try {
     const db = await connectDB();
 
-    const savedJobs = await new Promise((resolve, reject) => {
-      db.all(
-        `
-        SELECT 
-          jobs.id,
-          jobs.title,
-          jobs.description,
-          jobs.budget,
-          jobs.category,
-          jobs.deadline,
-          jobs.created_at,
-          users.first_name AS client_first_name,
-          users.last_name AS client_last_name
-        FROM saved_jobs
-        JOIN jobs ON saved_jobs.job_id = jobs.id
-        JOIN users ON jobs.client_id = users.id
-        WHERE saved_jobs.freelancer_id = ?
-        ORDER BY saved_jobs.saved_at DESC
-        `,
-        [user_id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
+    const result = await db.query(
+      `
+      SELECT 
+        jobs.id,
+        jobs.title,
+        jobs.description,
+        jobs.budget,
+        jobs.category,
+        jobs.deadline,
+        jobs.created_at,
+        users.first_name AS client_first_name,
+        users.last_name AS client_last_name
+      FROM saved_jobs
+      JOIN jobs ON saved_jobs.job_id = jobs.id
+      JOIN users ON jobs.client_id = users.id
+      WHERE saved_jobs.freelancer_id = $1
+      ORDER BY saved_jobs.saved_at DESC
+      `,
+      [user_id]
+    );
 
-    db.close();
-
-    if (!savedJobs || savedJobs.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(200).json({ message: "No saved jobs found.", jobs: [] });
     }
 
-    return res.status(200).json({ jobs: savedJobs });
+    return res.status(200).json({ jobs: result.rows });
   } catch (error) {
     console.error("Error fetching saved jobs:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
 
+// Delete a saved job
 export async function deleteSavedJob(req, res) {
   const user = req.user;
   const user_id = user.id;
@@ -150,39 +118,26 @@ export async function deleteSavedJob(req, res) {
   try {
     const db = await connectDB();
 
-    const existing = await new Promise((resolve, reject) => {
-      db.get(
-        "SELECT * FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
-        [user_id, job_id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
+    // Check if saved job exists
+    const existing = await db.query(
+      "SELECT * FROM saved_jobs WHERE freelancer_id = $1 AND job_id = $2",
+      [user_id, job_id]
+    );
 
-    if (!existing) {
-      db.close();
+    if (existing.rows.length === 0) {
       return res.status(404).json({ message: "Saved job not found." });
     }
 
-    await new Promise((resolve, reject) => {
-      db.run(
-        "DELETE FROM saved_jobs WHERE freelancer_id = ? AND job_id = ?",
-        [user_id, job_id],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
+    // Delete saved job
+    await db.query(
+      "DELETE FROM saved_jobs WHERE freelancer_id = $1 AND job_id = $2",
+      [user_id, job_id]
+    );
 
-    db.close();
     return res.status(200).json({
       message: "Saved job deleted successfully.",
       jobId: job_id
     });
-
   } catch (error) {
     console.error("Error deleting saved job:", error);
     return res.status(500).json({ message: "Internal server error" });

@@ -1,21 +1,24 @@
-// Establish connection to database
-import sqlite3 from 'sqlite3'
+// Establish connection to PostgreSQL database
+import pkg from 'pg';
+const { Pool } = pkg;
+
+let pool;
 
 export const connectDB = async () => {
+  if (!pool) {
     try {
-        const db = await new Promise((resolve, reject) => {
-            const database = new sqlite3.Database('./wia.db', (err) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    // console.log('Connected to SQLite database');
-                    resolve(database);
-                }
-            });
-        });
-        return db;
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // Render Postgres requires SSL
+      });
+
+      // Test connection
+      await pool.query('SELECT NOW()');
+      console.log('✅ Connected to PostgreSQL database');
     } catch (error) {
-        console.error('Database connection failed:', error.message);
-        throw error;
+      console.error('❌ Database connection failed:', error.message);
+      throw error;
     }
-}
+  }
+  return pool;
+};

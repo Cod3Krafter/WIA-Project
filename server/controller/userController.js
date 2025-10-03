@@ -1,39 +1,29 @@
-import { connectDB } from "../config/db.js"
+import { connectDB } from "../config/db.js";
 import { updateUserSchema } from "../schemas/userInputValidation.js";
 
-
-
+// ✅ Get all freelancers
 export async function getAllUsers(req, res) {
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    const users = await new Promise((resolve, reject) => {
-      db.all(
-        `
-        SELECT 
-          u.id, u.first_name, u.last_name, u.email,
-          GROUP_CONCAT(ur.role) AS roles,
-          u.bio, u.profile_picture, u.created_at
-        FROM users u
-        JOIN user_roles ur ON u.id = ur.user_id
-        WHERE ur.role = 'freelancer'
-        GROUP BY u.id
-        `,
-        [],
-        (err, rows) => {
-          if (err) reject(err);
-          else {
-            const formatted = rows.map((user) => ({
-              ...user,
-              roles: user.roles.split(","),
-            }));
-            resolve(formatted);
-          }
-        }
-      );
-    });
+    const result = await pool.query(
+      `
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email,
+        STRING_AGG(ur.role, ',') AS roles,
+        u.bio, u.profile_picture, u.created_at
+      FROM users u
+      JOIN user_roles ur ON u.id = ur.user_id
+      WHERE ur.role = 'freelancer'
+      GROUP BY u.id
+      `
+    );
 
-    db.close();
+    const users = result.rows.map((user) => ({
+      ...user,
+      roles: user.roles ? user.roles.split(",") : [],
+    }));
+
     return res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -41,6 +31,7 @@ export async function getAllUsers(req, res) {
   }
 }
 
+// ✅ Get single user by ID
 export async function getUserById(req, res) {
   const { id } = req.params;
 
@@ -49,38 +40,28 @@ export async function getUserById(req, res) {
   }
 
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    const user = await new Promise((resolve, reject) => {
-      db.get(
-        `
-        SELECT 
-          u.id, u.first_name, u.last_name, u.email,
-          GROUP_CONCAT(ur.role) AS roles,
-          u.bio, u.profile_picture
-        FROM users u
-        LEFT JOIN user_roles ur ON u.id = ur.user_id
-        WHERE u.id = ?
-        GROUP BY u.id
-        `,
-        [id],
-        (err, row) => {
-          if (err) reject(err);
-          else {
-            if (row) {
-              row.roles = row.roles ? row.roles.split(",") : [];
-            }
-            resolve(row);
-          }
-        }
-      );
-    });
+    const result = await pool.query(
+      `
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email,
+        STRING_AGG(ur.role, ',') AS roles,
+        u.bio, u.profile_picture
+      FROM users u
+      LEFT JOIN user_roles ur ON u.id = ur.user_id
+      WHERE u.id = $1
+      GROUP BY u.id
+      `,
+      [id]
+    );
 
-    db.close();
-
-    if (!user) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found." });
     }
+
+    const user = result.rows[0];
+    user.roles = user.roles ? user.roles.split(",") : [];
 
     return res.status(200).json(user);
   } catch (error) {
@@ -89,6 +70,7 @@ export async function getUserById(req, res) {
   }
 }
 
+// ✅ Update user
 export async function updateUser(req, res) {
   const { id } = req.params;
   const authUser = req.user;
@@ -113,102 +95,76 @@ export async function updateUser(req, res) {
   try {
     await updateUserSchema.validate(req.body, { abortEarly: false });
 
-    const db = await connectDB();
+    const pool = await connectDB();
+    const client = await pool.connect(); // ✅ for transaction
 
-    // Step 1: Fetch the existing user
-    const existingUser = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    try {
+      await client.query("BEGIN");
 
-    if (!existingUser) {
-      db.close();
-      return res.status(404).json({ message: "User not found" });
-    }
+      // Step 1: Fetch existing user
+      const userResult = await client.query("SELECT * FROM users WHERE id = $1", [id]);
 
-    // Step 2: Fetch contact methods
-    const existingContacts = await new Promise((resolve, reject) => {
-      db.get(
-        "SELECT * FROM contact_methods WHERE user_id = ?",
-        [id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
+      if (userResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        client.release();
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const existingUser = userResult.rows[0];
+
+      // Step 2: Fetch existing contact methods
+      const contactResult = await client.query(
+        "SELECT * FROM contact_methods WHERE user_id = $1",
+        [id]
       );
-    });
+      const existingContacts = contactResult.rows[0] || {};
 
-    // Step 3: Use existing values if not provided
-    const updatedFirstName = first_name || existingUser.first_name;
-    const updatedLastName = last_name || existingUser.last_name;
-    const updatedEmail = email || existingUser.email;
-    const updatedBio = bio || existingUser.bio;
-    const updatedProfilePic =
-      profile_picture || existingUser.profile_picture;
+      // Step 3: Merge updates
+      const updatedFirstName = first_name || existingUser.first_name;
+      const updatedLastName = last_name || existingUser.last_name;
+      const updatedEmail = email || existingUser.email;
+      const updatedBio = bio || existingUser.bio;
+      const updatedProfilePic = profile_picture || existingUser.profile_picture;
 
-    const updatedWhatsapp =
-      whatsapp || (existingContacts ? existingContacts.whatsapp : null);
-    const updatedLinkedin =
-      linkedin || (existingContacts ? existingContacts.linkedin : null);
-    const updatedContactEmail =
-      email || (existingContacts ? existingContacts.email : existingUser.email);
+      const updatedWhatsapp = whatsapp || existingContacts.whatsapp || null;
+      const updatedLinkedin = linkedin || existingContacts.linkedin || null;
+      const updatedContactEmail = email || existingContacts.email || existingUser.email;
 
-    // Step 4: Run updates inside a transaction
-    await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
+      // Step 4: Update users table
+      await client.query(
+        `UPDATE users 
+         SET first_name = $1, last_name = $2, email = $3, bio = $4, profile_picture = $5
+         WHERE id = $6`,
+        [
+          updatedFirstName,
+          updatedLastName,
+          updatedEmail,
+          updatedBio,
+          updatedProfilePic,
+          id
+        ]
+      );
 
-        // update users table
-        db.run(
-          `UPDATE users 
-           SET first_name = ?, last_name = ?, email = ?, bio = ?, profile_picture = ?
-           WHERE id = ?`,
-          [
-            updatedFirstName,
-            updatedLastName,
-            updatedEmail,
-            updatedBio,
-            updatedProfilePic,
-            id
-          ],
-          function (err) {
-            if (err) {
-              db.run("ROLLBACK");
-              reject(err);
-              return;
-            }
-          }
-        );
+      // Step 5: Upsert into contact_methods
+      await client.query(
+        `INSERT INTO contact_methods (user_id, whatsapp, email, linkedin)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id) DO UPDATE SET
+           whatsapp = EXCLUDED.whatsapp,
+           email = EXCLUDED.email,
+           linkedin = EXCLUDED.linkedin`,
+        [id, updatedWhatsapp, updatedContactEmail, updatedLinkedin]
+      );
 
-        // upsert contact_methods (since user_id is unique)
-        db.run(
-          `INSERT INTO contact_methods (user_id, whatsapp, email, linkedin)
-           VALUES (?, ?, ?, ?)
-           ON CONFLICT(user_id) DO UPDATE SET
-             whatsapp = excluded.whatsapp,
-             email = excluded.email,
-             linkedin = excluded.linkedin`,
-          [id, updatedWhatsapp, updatedContactEmail, updatedLinkedin],
-          function (err) {
-            if (err) {
-              db.run("ROLLBACK");
-              reject(err);
-              return;
-            }
-          }
-        );
+      await client.query("COMMIT");
+      client.release();
 
-        db.run("COMMIT", (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-    });
-
-    db.close();
-    return res.status(200).json({ message: "User profile updated successfully" });
+      return res.status(200).json({ message: "User profile updated successfully" });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      client.release();
+      throw err;
+    }
   } catch (error) {
     console.error("Error updating user:", error);
 
@@ -222,4 +178,3 @@ export async function updateUser(req, res) {
     return res.status(500).json({ message: "Internal server error" });
   }
 }
-

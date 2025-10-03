@@ -1,6 +1,7 @@
 import { connectDB } from "../config/db.js"
 import { createSkillSchema } from "../schemas/skillInputValidation.js";
 
+// ✅ Create Skill
 export async function createSkill(req, res) {
   try {
     const { skill_name, description } = req.body;
@@ -12,25 +13,17 @@ export async function createSkill(req, res) {
       return res.status(400).json({ message: "Skill name is required" });
     }
 
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        "INSERT INTO skills (user_id, skill_name, description) VALUES (?, ?, ?)",
-        [user_id, skill_name, description],
-        function (err) {
-          if (err) reject(err);
-          else resolve({ id: this.lastID });
-        }
-      );
-    });
-
-    db.close();
+    const result = await pool.query(
+      "INSERT INTO skills (user_id, skill_name, description) VALUES ($1, $2, $3) RETURNING id",
+      [user_id, skill_name, description]
+    );
 
     res.status(201).json({
       message: "Skill created successfully",
       skill: {
-        id: result.id,
+        id: result.rows[0].id,
         user_id,
         skill_name,
         description
@@ -51,25 +44,15 @@ export async function createSkill(req, res) {
   }
 }
 
+// ✅ Get All Skills
 export async function getAllSkills(req, res) {
   try {
-    const db = await connectDB();
-
-    const skills = await new Promise((resolve, reject) => {
-      db.all(
-        "SELECT skill_name, description FROM skills",
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
-
-    db.close();
+    const pool = await connectDB();
+    const result = await pool.query("SELECT skill_name, description FROM skills");
 
     res.status(200).json({
       message: "All skills retrieved successfully",
-      skills: skills
+      skills: result.rows
     });
 
   } catch (error) {
@@ -78,42 +61,27 @@ export async function getAllSkills(req, res) {
   }
 }
 
+// ✅ Get Skills for Logged-In User
 export async function getUserSkills(req, res) {
   const user_id = req.user.id;
 
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    // Get all skills for this user
-    const skills = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT * FROM skills WHERE user_id = ?`,
-        [user_id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
+    const skillsResult = await pool.query(
+      "SELECT * FROM skills WHERE user_id = $1",
+      [user_id]
+    );
+
+    const skills = [];
+    for (const skill of skillsResult.rows) {
+      const projectsResult = await pool.query(
+        "SELECT * FROM projects WHERE skill_id = $1",
+        [skill.id]
       );
-    });
-
-    // For each skill, get projects
-    for (const skill of skills) {
-      const projects = await new Promise((resolve, reject) => {
-        db.all(
-          `SELECT * FROM projects WHERE skill_id = ?`,
-          [skill.id],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-          }
-        );
-      });
-
-      skill.projects = projects;
+      skills.push({ ...skill, projects: projectsResult.rows });
     }
 
-    db.close();
-    console.log("Fetched skills:", skills);
     return res.status(200).json(skills);
   } catch (error) {
     console.error("Error fetching user skills:", error);
@@ -121,42 +89,27 @@ export async function getUserSkills(req, res) {
   }
 }
 
+// ✅ Get Skills by User ID
 export async function getUserSkillsById(req, res) {
   const user_id = req.params.id;
 
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    // Get all skills for this user
-    const skills = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT * FROM skills WHERE user_id = ?`,
-        [user_id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
+    const skillsResult = await pool.query(
+      "SELECT * FROM skills WHERE user_id = $1",
+      [user_id]
+    );
+
+    const skills = [];
+    for (const skill of skillsResult.rows) {
+      const projectsResult = await pool.query(
+        "SELECT * FROM projects WHERE skill_id = $1",
+        [skill.id]
       );
-    });
-
-    // For each skill, get projects
-    for (const skill of skills) {
-      const projects = await new Promise((resolve, reject) => {
-        db.all(
-          `SELECT * FROM projects WHERE skill_id = ?`,
-          [skill.id],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-          }
-        );
-      });
-
-      skill.projects = projects;
+      skills.push({ ...skill, projects: projectsResult.rows });
     }
 
-    db.close();
-    console.log("Fetched skills:", skills);
     return res.status(200).json(skills);
   } catch (error) {
     console.error("Error fetching user skills:", error);
@@ -164,50 +117,37 @@ export async function getUserSkillsById(req, res) {
   }
 }
 
-
+// ✅ Update Skill
 export async function updateSkill(req, res) {
   const { id } = req.params;
   const user_id = req.user.id;
   const { skill_name, description } = req.body;
 
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    // Step 1: Fetch the existing skill
-    const skill = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM skills WHERE id = ?", [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const skillResult = await pool.query(
+      "SELECT * FROM skills WHERE id = $1",
+      [id]
+    );
 
-    if (!skill) {
-      db.close();
+    if (skillResult.rows.length === 0) {
       return res.status(404).json({ message: "Skill not found" });
     }
 
+    const skill = skillResult.rows[0];
+
     if (skill.user_id !== user_id) {
-      db.close();
       return res.status(403).json({ message: "You do not have permission to update this skill" });
     }
 
-    // Step 2: Use existing values if updates are not provided
     const updatedSkillName = skill_name || skill.skill_name;
     const updatedDescription = description || skill.description;
 
-    // Step 3: Perform the update
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE skills SET skill_name = ?, description = ? WHERE id = ?`,
-        [updatedSkillName, updatedDescription, id],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    db.close();
+    await pool.query(
+      "UPDATE skills SET skill_name = $1, description = $2 WHERE id = $3",
+      [updatedSkillName, updatedDescription, id]
+    );
 
     return res.status(200).json({ message: "Skill updated successfully" });
   } catch (error) {
@@ -216,42 +156,30 @@ export async function updateSkill(req, res) {
   }
 }
 
-
+// ✅ Delete Skill
 export async function deleteSkill(req, res) {
   const { id } = req.params;
-  const user_id = req.user.id; // From JWT middleware
+  const user_id = req.user.id;
 
   try {
-    const db = await connectDB();
+    const pool = await connectDB();
 
-    // Step 1: Fetch the skill
-    const skill = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM skills WHERE id = ?", [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const skillResult = await pool.query(
+      "SELECT * FROM skills WHERE id = $1",
+      [id]
+    );
 
-    if (!skill) {
-      db.close();
+    if (skillResult.rows.length === 0) {
       return res.status(404).json({ message: "Skill not found" });
     }
 
-    // Step 2: Check if user owns the skill
+    const skill = skillResult.rows[0];
+
     if (skill.user_id !== user_id) {
-      db.close();
       return res.status(403).json({ message: "You do not have permission to delete this skill" });
     }
 
-    // Step 3: Delete the skill
-    const result = await new Promise((resolve, reject) => {
-      db.run("DELETE FROM skills WHERE id = ?", [id], function (err) {
-        if (err) reject(err);
-        else resolve(this.changes);
-      });
-    });
-    console.log(`Deleted skill with id ${id}, affected rows: ${result}`);
-    db.close();
+    await pool.query("DELETE FROM skills WHERE id = $1", [id]);
 
     return res.status(200).json({ message: "Skill deleted successfully" });
   } catch (error) {
@@ -259,6 +187,3 @@ export async function deleteSkill(req, res) {
     return res.status(500).json({ message: "Internal server error" });
   }
 }
-
-
-
