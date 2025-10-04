@@ -40,7 +40,7 @@ export function LoginForm({ className, ...props }) {
             navigate("/resend-verification");
           } else {
             const message = data?.message || error.message;
-            toast.error(message.includes("Invalid") ? "Invalid email or password" : "Something went wrong");
+            toast.error(message);
           }
         } finally {
           setSubmitting(false);
