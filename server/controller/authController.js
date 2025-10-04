@@ -165,7 +165,7 @@ export async function loginUser(req, res) {
     const user = rows[0];
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "You'll need to register first" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
